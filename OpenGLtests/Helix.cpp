@@ -25,11 +25,12 @@
 
 // Other includes
 #include "Shader.h"
+#include "Cylinder.h"
+#include "Cone.h"
+#include "Helix.h"
 #include "TetrahedralMesh.h"
 
 // Function prototypes
-void addTriangleToVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 normal, std::vector<GLfloat> &vec);
-glm::vec3 getNormalOfTriangle(glm::vec3 &side1, glm::vec3 &side2, glm::vec3 &p3);
 void convertGlmMatToEigen(glm::mat3 &glmMat, Eigen::MatrixXd &eigenMatOut);
 bool verifyOrthogonalVecs(glm::vec3 a, glm::vec3 b, glm::vec3 c);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
@@ -85,115 +86,12 @@ int main()
 
 
 	//Helix:
-	//std::vector<GLfloat> verts;
-	//GLfloat a = .5f;
-	//GLfloat b = .05f;
-	//GLfloat tMax = glm::pi<float>() * 8.0;
-	//GLfloat t;
-	//GLfloat tInc = glm::pi<float>() / 32.0f;
-	//for (t = 4.0 * tMax / -4.0f; t < tMax; t += tInc){
-	//	verts.push_back(a*cos(t));
-	//	verts.push_back(b*t);
-	//	verts.push_back(a*sin(t));
-	//	verts.push_back(0.0f); //normal for now
-	//	verts.push_back(0.0f); //normal for now
-	//	verts.push_back(0.0f); //normal for now
-	//}
-
-	const GLfloat TWO_PI = glm::pi<float>() * 2.0f;
-	//Cylinder
-	std::vector<GLfloat> verts;
-	GLfloat radius = .3f;
-	GLfloat diffBetweenCircles = .01f;
-
-	GLfloat t;
-	GLfloat radInc = glm::pi<float>() / 128.0f;
-	int numCircles = 150;
-	//numCircles * diffBetweenCircles = HEIGHT
-
-	std::vector<GLfloat> circleXpts;
-	std::vector<GLfloat> circleZpts;
-	//std::vector<GLfloat> circleVerts;
-	int circlePts = 0;
-	for (GLfloat rad = 0; rad <= TWO_PI; rad += radInc){
-		circleXpts.push_back(radius*cos(rad));
-		circleZpts.push_back(radius*sin(rad));
-		circlePts++;
-		/*circleVerts.push_back(radius*cos(rad));
-		circleVerts.push_back(radius*sin(rad));
-		circleVerts.push_back(0.0f);
-		circleVerts.push_back(0.0f);
-		circleVerts.push_back(0.0f);
-		circleVerts.push_back(0.0f);*/
-	}
-
-	const int heightOffset = 0;
-
-	std::vector<GLfloat> coneVerts;
-	GLfloat coneHeight = -.5f;
-	glm::vec3 conePoint(0.0f, coneHeight, 0.0f);
-	//glm::vec3 coneBase(0.0f, 0.0f, 0.0f);
-	
-	for (int h = 0 - heightOffset; h < numCircles - heightOffset; h++){
-		for (int circ = 0; circ < circlePts; circ++){
-			GLfloat x1 = circleXpts[circ];
-			GLfloat y1 = diffBetweenCircles * h;
-			GLfloat z1 = circleZpts[circ];
-
-			GLfloat x2 = x1;
-			GLfloat y2 = y1 + diffBetweenCircles;
-			GLfloat z2 = z1;
-
-			GLfloat x3, z3;
-			if (circ == circlePts - 1){
-				x3 = circleXpts[0];
-				z3 = circleZpts[0];
-			}
-			else{
-				x3 = circleXpts[circ + 1];
-				z3 = circleZpts[circ + 1];
-			}
-			GLfloat y3 = y1;
-
-			GLfloat x4 = x3;
-			GLfloat y4 = y2;
-			GLfloat z4 = z3;
-
-			glm::vec3 p1(x1, y1, z1);
-			glm::vec3 p2(x2, y2, z2);
-			glm::vec3 p3(x3, y3, z3);
-			glm::vec3 p4(x4, y4, z4);
-
-			// Triangles look like:
-			///  p2 -- p4
-			///  |  \  |
-			///  p1 -- p3
-
-			glm::vec3 normal1 = getNormalOfTriangle(p1, p2, p3);
-			glm::vec3 normal2 = getNormalOfTriangle(p3, p2, p4);
-
-			addTriangleToVector(p1, p2, p3, normal1, verts);
-			addTriangleToVector(p3, p2, p4, normal2, verts);
-		}
-	}
-	//CONE:
-	for (int circ = 0; circ < circlePts; circ++){
-		GLfloat x1 = circleXpts[circ];
-		GLfloat y1 = 0.0f;
-		GLfloat z1 = circleZpts[circ];
-		GLfloat x2, z2;
-		if (circ == circlePts - 1){
-			x2 = circleXpts[0];
-			z2 = circleZpts[0];
-		}
-		else{
-			x2 = circleXpts[circ + 1];
-			z2 = circleZpts[circ + 1];
-		}
-		glm::vec3 p1(x1, y1, z1);
-		glm::vec3 p2(x2, y1, z2);
-		addTriangleToVector(p1, p2, conePoint, getNormalOfTriangle(p1, p2, conePoint), coneVerts);
-	}
+	Helix helix(.3f, .1f, 1.0f);
+	std::vector<GLfloat> helixVerts = helix.vertices;
+	Cylinder cyl(.2f, 1.0f);
+	std::vector<GLfloat> verts = cyl.vertices;
+	Cone cone(.2f, .3f, false);
+	std::vector<GLfloat> coneVerts = cone.vertices;
 
 
 #pragma endregion
@@ -220,6 +118,20 @@ int main()
 	glBindVertexArray(coneVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, coneVBO);
 	glBufferData(GL_ARRAY_BUFFER, coneVerts.size() * sizeof(GLfloat), &coneVerts[0], GL_STATIC_DRAW);
+
+	// Position attribute
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
+
+	GLuint helixVBO, helixVAO;
+	glGenVertexArrays(1, &helixVAO);
+	glGenBuffers(1, &helixVBO);
+	glBindVertexArray(helixVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, helixVBO);
+	glBufferData(GL_ARRAY_BUFFER, helixVerts.size() * sizeof(GLfloat), &helixVerts[0], GL_STATIC_DRAW);
 
 	// Position attribute
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
@@ -286,14 +198,23 @@ int main()
 		glBindVertexArray(VAO);
 		// glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //wireframe
 
-		//FOr Helix:
-		//glDrawArrays(GL_LINE_STRIP, 0, verts.size() / 6);
-
 		//For cylinder:
 		glDrawArrays(GL_TRIANGLES, 0, verts.size() / 2);
 
+		//CONE:
 		glBindVertexArray(coneVAO);
+		glm::mat4 coneModel;
+		coneModel = glm::translate(coneModel, glm::vec3(0.0f, -.5f, 0.0f));
+		coneModel = model * coneModel;
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(coneModel));
 		glDrawArrays(GL_TRIANGLES, 0, coneVerts.size() / 2);
+
+		glBindVertexArray(helixVAO);
+		glm::mat4 helixModel;
+		//helixModel = glm::translate(helixModel, glm::vec3(0.5f, 0.0f, 0.0f));
+		helixModel = model * helixModel;
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(helixModel));
+		glDrawArrays(GL_LINE_STRIP, 0, helixVerts.size() / 6);
 
 		glBindVertexArray(0);
 
@@ -304,6 +225,8 @@ int main()
 	// Properly de-allocate all resources once they've outlived their purpose
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
+	glDeleteVertexArrays(1, &coneVAO);
+	glDeleteBuffers(1, &coneVBO);
 
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
@@ -311,38 +234,9 @@ int main()
 	return 0;
 }
 
-void addTriangleToVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 normal, std::vector<GLfloat> &vec){
-	vec.push_back(p1.x);
-	vec.push_back(p1.y);
-	vec.push_back(p1.z);
-	vec.push_back(normal.x);
-	vec.push_back(normal.y);
-	vec.push_back(normal.z);
 
-	vec.push_back(p2.x);
-	vec.push_back(p2.y);
-	vec.push_back(p2.z);
-	vec.push_back(normal.x);
-	vec.push_back(normal.y);
-	vec.push_back(normal.z);
 
-	vec.push_back(p3.x);
-	vec.push_back(p3.y);
-	vec.push_back(p3.z);
-	vec.push_back(normal.x);
-	vec.push_back(normal.y);
-	vec.push_back(normal.z);
-}
 
-glm::vec3 getNormalOfTriangle(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3){
-	glm::vec3 normal;
-	glm::vec3 V = p2 - p1;
-	glm::vec3 W = p3 - p1;
-	normal.x = (V.y * W.z) - (V.z * W.y);
-	normal.y = (V.z * W.z) - (V.x * W.z);
-	normal.z = (V.x * W.y) - (V.y * W.x);
-	return normal;
-}
 
 void convertGlmMatToEigen(glm::mat3 &glmMat, Eigen::MatrixXd &eigenMatOut){
 	//eigenMatOut(row, col)
