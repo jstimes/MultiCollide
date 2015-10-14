@@ -29,6 +29,7 @@
 
 // Function prototypes
 void convertGlmMatToEigen(glm::mat3 &glmMat, Eigen::MatrixXd &eigenMatOut);
+void normalizeEigenVals(float eigenVal1, float eigenVal2, float eigenVal3, std::vector<GLfloat> &normalizedEvals);
 bool verifyOrthogonalVecs(glm::vec3 a, glm::vec3 b, glm::vec3 c);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 
@@ -75,7 +76,7 @@ int main()
     glEnable(GL_DEPTH_TEST);
 
     // Build and compile our shader program
-    Shader bareShader("vertexShaderBare.glsl", "fragmentShaderBare.glsl");
+    Shader bareShader("vertexShader.glsl", "fragmentShader.glsl");
 
 #pragma endregion
 
@@ -127,6 +128,19 @@ int main()
 	for(int vert = 0; vert<vertices.size(); vert++){
 		tetrahedron[vert] = vertices[vert];
 	}
+
+	//std::string line;
+	//std::ifstream myfile("out_2.mesh");
+	//if (myfile.is_open()) {
+	//	while ( getline (myfile,line) ){
+
+	//	}
+	//	myfile.close();
+	//}
+	//else {
+	//	std::cout << "Failed opening" << std::endl;
+	//}
+
 #pragma endregion
 
 #pragma region PrincipalFrameComputation
@@ -136,12 +150,16 @@ int main()
 	for(int i=0; i<3; i++)
 		std::cout << angularInertia.col(i) << std::endl;
 	typedef Eigen::ComplexEigenSolver<MatrixXd>::EigenvectorType EigenVec;
+	typedef Eigen::ComplexEigenSolver<MatrixXd>::EigenvalueType EigenVal;
 	EigenVec eigenVec1 = ces.eigenvectors().col(0);
 	EigenVec eigenVec2 = ces.eigenvectors().col(1);
 	EigenVec eigenVec3 = ces.eigenvectors().col(2);
+	float eigenVal1 = ces.eigenvalues().col(0).row(0).real().value();
+	float eigenVal2 = ces.eigenvalues().col(0).row(1).real().value();
+	float eigenVal3 = ces.eigenvalues().col(0).row(2).real().value();
 
 	using namespace std;
-	cout << eigenVec1 << endl << eigenVec2 << endl << eigenVec3 << endl;
+	cout << eigenVal1 << endl << eigenVal2 << endl << eigenVal3 << endl;
 
     //Eigen::JacobiSVD<MatrixXd> svd(angularInertia, Eigen::DecompositionOptions::ComputeFullU);
    // MatrixXd eigenVectors = svd.matrixU();
@@ -156,10 +174,16 @@ int main()
 	//GLfloat sB = singVals(1, 0);
 	//GLfloat sC = singVals(2, 0);
 
-    //Normalize:
-    eigenVecA = glm::normalize(eigenVecA);
-    eigenVecB = glm::normalize(eigenVecB);
-    eigenVecC = glm::normalize(eigenVecC);
+	std::vector<GLfloat> normalizedEvals;
+	normalizeEigenVals(eigenVal1, eigenVal2, eigenVal3, normalizedEvals);
+
+    //Normalize:  jk DONT, scale by eigenvals
+    //eigenVecA = glm::normalize(eigenVecA);
+    //eigenVecB = glm::normalize(eigenVecB);
+    //eigenVecC = glm::normalize(eigenVecC);
+	eigenVecA = eigenVecA * normalizedEvals[0];
+	eigenVecB = eigenVecB * normalizedEvals[1];
+	eigenVecC = eigenVecC * normalizedEvals[2];
 
 	glm::vec3 centroid = mesh.MeshCentroid;
 
@@ -300,4 +324,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
+}
+
+void normalizeEigenVals(float eigenVal1, float eigenVal2, float eigenVal3, std::vector<GLfloat> &normalizedEvals){
+	float max = (eigenVal1 > eigenVal2 ? (eigenVal1 > eigenVal3 ? eigenVal1 : eigenVal3) : (eigenVal2 > eigenVal3 ? eigenVal2 : eigenVal3) );
+	normalizedEvals.push_back(eigenVal1 / max);
+	normalizedEvals.push_back(eigenVal2 / max);
+	normalizedEvals.push_back(eigenVal3 / max);
 }
