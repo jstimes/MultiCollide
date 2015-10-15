@@ -1,8 +1,11 @@
+#pragma once
 #include <glm\common.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
+#include <string>
+#include <fstream>
+#include "ShapeUtils.h"
 
-//Should probably be a class....
 class Tetrahedron {
 public:
 	//Properties set by caller:
@@ -19,6 +22,10 @@ public:
 	float mass;
 	float density;
 
+	//Set by TetrahedralMesh class:
+	glm::vec3 centroid;
+	glm::mat3 angularInertia;
+
 	Tetrahedron() {
 		volume = 1.0;
 		mass = 1.0;
@@ -26,24 +33,30 @@ public:
 	}
 
 	Tetrahedron(glm::vec3 pa, glm::vec3 pb, glm::vec3 pc, glm::vec3 pd) : a(pa), b(pa), c(pc), d(pd) {
-		volume = 1.0;
+		computeVolume();
 		mass = 1.0;
 		density = 1.0;
-		//TODO compute normals of triangles
+		normalACD = ShapeUtils::getNormalOfTriangle(a, c, d);
+		normalABC = ShapeUtils::getNormalOfTriangle(a, b, c);
+		normalCDB = ShapeUtils::getNormalOfTriangle(c, d, b);
+		normalABD = ShapeUtils::getNormalOfTriangle(a, b, d);
 	}
 
 	Tetrahedron(glm::vec3 pa, glm::vec3 pb, glm::vec3 pc, glm::vec3 pd, float pVolume, float pMass, float pDensity) : 
 		a(pa), b(pa), c(pc), d(pd), volume(pVolume), mass(pMass), density(pDensity) {
-		volume = 1.0;
+		
 		mass = 1.0;
 		density = 1.0;
-		//TODO compute normals of triangles
+		normalACD = ShapeUtils::getNormalOfTriangle(a, c, d);
+		normalABC = ShapeUtils::getNormalOfTriangle(a, b, c);
+		normalCDB = ShapeUtils::getNormalOfTriangle(c, d, b);
+		normalABD = ShapeUtils::getNormalOfTriangle(a, b, d);
 	}
 
 	Tetrahedron(glm::vec3 pa, glm::vec3 pb, glm::vec3 pc, glm::vec3 pd, glm::vec3 pNormalACD, glm::vec3 pNormalABC,
 		glm::vec3 pNormalCDB, glm::vec3 pNormalABD) : a(pa), b(pa), c(pc), d(pd), normalACD(pNormalACD), 
 		normalABC(pNormalABC), normalCDB(pNormalCDB), normalABD(pNormalABD) {
-		volume = 1.0;
+		computeVolume();
 		mass = 1.0;
 		density = 1.0;
 	}
@@ -55,25 +68,66 @@ public:
 
 	}
 
-	//Set by TetrahedralMesh class:
-	glm::vec3 centroid;
-	glm::mat3 angularInertia;
+	void computeVolume(){
+		glm::mat4 volDet;
+		/*volDet[0][0] = a.x;
+		volDet[0][1] = b.x;
+		volDet[0][2] = c.x;
+		volDet[0][3] = d.x;
+
+		volDet[1][0] = a.y;
+		volDet[1][1] = b.y;
+		volDet[1][2] = c.y;
+		volDet[1][3] = d.y;
+
+		volDet[2][0] = a.z;
+		volDet[2][1] = b.z;
+		volDet[2][2] = c.z;
+		volDet[2][3] = d.z;
+
+		volDet[3][0] = 1.0f;
+		volDet[3][1] = 1.0f;
+		volDet[3][2] = 1.0f;
+		volDet[3][3] = 1.0f;*/
+		volDet[0][0] = a.x;
+		volDet[1][0] = b.x;
+		volDet[2][0] = c.x;
+		volDet[3][0] = d.x;
+
+		volDet[0][1] = a.y;
+		volDet[1][1] = b.y;
+		volDet[2][1] = c.y;
+		volDet[3][1] = d.y;
+
+		volDet[0][2] = a.z;
+		volDet[1][2] = b.z;
+		volDet[2][2] = c.z;
+		volDet[3][2] = d.z;
+
+		volDet[0][3] = 1.0f;
+		volDet[1][3] = 1.0f;
+		volDet[2][3] = 1.0f;
+		volDet[3][3] = 1.0f;
+
+		volume = glm::determinant(volDet) / 6.0f;
+		if (volume < .0000001f){
+			volume = 1.0f;
+		}
+	}
+
 };
 
 class TetrahedralMesh {
-private:
+public:
 	int TetrahedraCount;
 	std::vector<Tetrahedron> Tetrahedra;
-
-public:
-
-	TetrahedralMesh() : TetrahedraCount(0) {}
-
 	glm::vec3 MeshCentroid;
 	glm::mat3 AngularInertia;
 	float Volume;
 	float Mass;
 	float Density;
+
+	TetrahedralMesh() : TetrahedraCount(0) {}
 
 	void AddTetrahedron(Tetrahedron &th){
 		Tetrahedra.push_back(th);
@@ -200,6 +254,55 @@ public:
 		return this->TetrahedraCount;
 	}
 
+	static void BuildFromFile(std::string filename, TetrahedralMesh &outRef){
+		std::string line;
+		std::ifstream meshfile("out_2.mesh"); //TODO use filename
+		if (meshfile.is_open()) {
+			std::vector<glm::vec3> vertices;
+			bool vertex = false;
+			bool tetrahedra = false;
+			while (getline(meshfile, line)){
+				if (!vertex){
+					if (line.compare("Vertices") == 0){
+						//vertex count:
+						getline(meshfile, line);
+						//vertexx count = line
+						vertex = true;
+					}
+				}
+				else if (vertex && !tetrahedra){
+					if (line.compare("Triangles") == 0){
+						while (line != "Tetrahedra")
+							getline(meshfile, line);
+						getline(meshfile, line); //count
+						tetrahedra = true;
+						continue;
+					}
+					std::vector<std::string> splitLine;
+					TetrahedralMesh::splitStringOnSpace(line, splitLine);
+					vertices.push_back(glm::vec3(stof(splitLine[0]), stof(splitLine[1]), stof(splitLine[2]))); //drop the homogeneous coord
+				}
+				else if(tetrahedra){
+					//Read in tetrahedra indices:
+					if (line.compare("End") == 0)
+						break;
+					std::vector<std::string> splitLine;
+					TetrahedralMesh::splitStringOnSpace(line, splitLine);
+					int indexA = stoi(splitLine[0]) - 1;
+					int indexB = stoi(splitLine[1]) - 1;
+					int indexC = stoi(splitLine[2]) - 1;
+					int indexD = stoi(splitLine[3]) - 1;
+					Tetrahedron t(vertices[indexA], vertices[indexB], vertices[indexC], vertices[indexD]);
+					outRef.AddTetrahedron(t);
+				}
+			}
+			meshfile.close();
+		}
+		else {
+			std::cout << "Failed opening " << filename << std::endl;
+		}
+	}
+
 private:
 
 	void angularInertiaWithRespectToPoint(glm::vec3 &point, Tetrahedron &th, glm::mat3 &inertiaWrtPoint) {
@@ -273,6 +376,13 @@ private:
 			+ c.x*d.y + 2.0*d.x*d.y)) / 120.0;
 
 		th.angularInertia = glm::mat3(aa, -bPrime, -cPrime, -bPrime, bb, -aPrime, -cPrime, -aPrime, cc);
+	}
+
+	static void splitStringOnSpace(std::string str, std::vector<std::string>& args){
+		std::istringstream iss(str);
+		std::copy(std::istream_iterator<std::string>(iss),
+			std::istream_iterator<std::string>(),
+			back_inserter(args));
 	}
 
 };
