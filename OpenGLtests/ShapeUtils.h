@@ -13,11 +13,11 @@ class ShapeUtils {
 
 public:
 
-	static void getCirclePoints(float radius, std::vector<GLfloat> &circleXpts, std::vector<GLfloat> &circleZpts, float ptOffset = 128.0f);
+	static void getCirclePoints(double radius, std::vector<GLdouble> &circleXpts, std::vector<GLdouble> &circleZpts, double ptOffset = 128.0f);
 
-	static glm::vec3 getNormalOfTriangle(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3);
+	static glm::dvec3 getNormalOfTriangle(glm::dvec3 &p1, glm::dvec3 &p2, glm::dvec3 &p3);
 
-	static void addTriangleToVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 normal, std::vector<GLfloat> &vec);
+	static void addTriangleToVector(glm::dvec3 p1, glm::dvec3 p2, glm::dvec3 p3, glm::dvec3 normal, std::vector<GLdouble> &vec);
 
 };
 
