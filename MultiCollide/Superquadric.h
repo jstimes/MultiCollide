@@ -3,17 +3,9 @@
 #include <math.h>
 #include <vector>
 #include <map>
-#include <glm/glm.hpp>
-
-// GLEW
-#define GLEW_STATIC
-#include <GL/glew.h>
 
 #include "Quaternion.h"
 #include "Shape.h"
-#include "Arrow.h"
-#include "Shader.h"
-#include "MathUtils.h"
 
 const float SQ_EPSILON = 0.0001f;
 
@@ -152,11 +144,6 @@ public:
 	}
 
 	virtual void InitVAOandVBO(Shader &shader) override {
-
-		this->velocityArrow = Arrow(this->centroid, centroid + curVelocity);
-		this->velocityArrow.InitBuffers();
-		this->angularVelocityArrow = Arrow(this->centroid, centroid + angularVelocityAxis);
-		this->angularVelocityArrow.InitBuffers();
 
 		glGenVertexArrays(1, &VAO);
 		glGenBuffers(1, &VBO);

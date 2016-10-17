@@ -1,14 +1,13 @@
-#ifndef SHAPE_UTILS_HG
-#define SHAPE_UTILS_HG
+#pragma once
 
 #include <vector>
-#ifndef GLEW_STATIC
-#endif
+
+// GLEW
+#define GLEW_STATIC
 #include <GL/glew.h>
-#include <glm/common.hpp>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/constants.hpp>
+
+#include "MathUtils.h"
+#include "Shader.h"
 
 
 class ShapeUtils {
@@ -32,29 +31,6 @@ public:
 		return xDiff * xDiff + yDiff * yDiff + zDiff * zDiff;
 	}
 
-	static glm::mat4 rotationFromAtoB(glm::vec3 a, glm::vec3 b) {
-		a = glm::normalize(a);
-		b = glm::normalize(b);
-		glm::vec3 rotAxis = glm::cross(a, b);
-		float rotAngle = acos(glm::dot(b, a));
-
-		//In case b is parallel with a :
-		if (absf(a.x - b.x) < .0001f && absf(a.y - b.y) < .0001f && absf(a.z - b.z) < .0001f) {
-
-			//Same vector:
-			if (glm::dot(a, b) > 0.0f) {
-				return glm::mat4();
-			}
-			// Opposite vectors
-			else {
-
-				rotAngle = glm::pi<float>();
-			}
-		}
-
-		return glm::rotate(glm::mat4(), rotAngle, rotAxis);
-	}
-
 	static float absf(float x) {
 		if (x < 0.0f) {
 			return -1.0f * x;
@@ -67,5 +43,3 @@ public:
 	}
 
 };
-
-#endif

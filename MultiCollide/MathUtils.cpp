@@ -1,9 +1,10 @@
 #include "MathUtils.h"
-#include <glm/gtc/constants.hpp>
+
 
 HashMap MathUtils::cosMap = HashMap();
 HashMap MathUtils::sinMap = HashMap();
 
+const glm::mat4 MathUtils::I4 = glm::mat4();
 const float MathUtils::PI = glm::pi<float>();
 const float MathUtils::twoPI = glm::pi<float>() * 2.0f;
 
@@ -57,4 +58,27 @@ float MathUtils::convertTrigInputToStandardRange(float x) {
 		x += MathUtils::twoPI;
 	}
 	return x;
+}
+
+glm::mat4 MathUtils::rotationFromAtoB(glm::vec3 a, glm::vec3 b) {
+	a = glm::normalize(a);
+	b = glm::normalize(b);
+	glm::vec3 rotAxis = glm::cross(a, b);
+	float rotAngle = acos(glm::dot(b, a));
+
+	//In case b is parallel with a :
+	if (MathUtils::abs(a.x - b.x) < .0001f && MathUtils::abs(a.y - b.y) < .0001f && MathUtils::abs(a.z - b.z) < .0001f) {
+
+		//Same vector:
+		if (glm::dot(a, b) > 0.0f) {
+			return glm::mat4();
+		}
+		// Opposite vectors
+		else {
+
+			rotAngle = glm::pi<float>();
+		}
+	}
+
+	return glm::rotate(glm::mat4(), rotAngle, rotAxis);
 }

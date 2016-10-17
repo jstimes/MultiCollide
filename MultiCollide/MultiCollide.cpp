@@ -3,8 +3,14 @@
 #include <vector>
 
 // GLEW
-#define GLEW_STATIC
-#include <GL/glew.h>
+// GLM Mathematics
+//#include <glm/glm.hpp>
+//#include <glm/gtc/matrix_transform.hpp>
+//#include <glm/gtc/type_ptr.hpp>
+//#include <glm/gtx/quaternion.hpp>
+//#include <glm/gtc/quaternion.hpp>
+//#include <glm/gtc/constants.hpp>
+#include "ShapeUtils.h" // includes all necessary glm headers, GLEW defs, mathutils
 
 // GLFW
 #include <GLFW/glfw3.h>
@@ -12,20 +18,13 @@
 // Other Libs
 //#include <SOIL.h>
 
-// GLM Mathematics
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtc/constants.hpp>
 
 //EIGEN - SVD 
 #include <Eigen/Dense>
 #include <Eigen\SVD>
 
 // Other includes
-#include "MathUtils.h"
+//#include "MathUtils.h"
 #include "Shader.h"
 #include "Quaternion.h"
 #include "TetrahedralMesh.h"
@@ -187,8 +186,6 @@ glm::vec3 selectedColor = glm::vec3(.2f, .7f, .2f);
 glm::mat4 sceneTransform;
 glm::mat4 inverseSceneTransform;
 glm::mat4 inverseProjection;
-
-Frame frame;
 
 //Used so objects don't 're-collide' before they have  
 // moved away from another colliding objects
@@ -2177,7 +2174,7 @@ void Collision(Shape &s1, glm::vec3 contactPt1, Shape &s2, glm::vec3 contactPt2)
 		glm::vec3 normGlobal = glm::vec3(sq->getRotationMatrix() * glm::vec4(normLocal.x, normLocal.y, normLocal.z, 1.0));
 
 		//Rotate y to contact normal
-		RTAN = glm::mat3(ShapeUtils::rotationFromAtoB(glm::vec3(1.0, 0.0, 0.0), normGlobal));
+		RTAN = glm::mat3(MathUtils::rotationFromAtoB(glm::vec3(1.0, 0.0, 0.0), normGlobal));
 	}
 
 	r1 = Superquadric::getLocalCoordinates(contactPt1, s1.translation, s1Rot);
@@ -2277,8 +2274,6 @@ void InitOpenGL() {
 	glEnable(GL_DEPTH_TEST);
 
 	glLineWidth(3.0f);
-
-	frame.init();
 
 	// Build and compile our shader program
 	if (!USING_EMSCRIPTEN) {
@@ -2396,8 +2391,8 @@ void Render() {
 
 		shape->Draw(shapeShader);
 		if (plotPrincipalFrame) {
-			glm::mat4 scaleMatrix = glm::scale(i4, glm::vec3(shape->scaling * shape->boundingSphereRadius * 1.5f));
-			frame.Draw(shapeShader, shape->translation, shapeRot, scaleMatrix);
+			float scaling = shape->scaling.x * shape->boundingSphereRadius * 1.5f;
+			Frame::Draw(shapeShader, shape->translation, shapeRot, scaling);
 		}
 		if (plotRotationAxis) {
 			glUniform3f(objectColorLoc, .8f, .1f, .1f);
@@ -2421,8 +2416,7 @@ void Render() {
 
 	//Render global frame in lower left corner:
 	glm::vec3 globalFramePos = glm::vec3(1.0f, -1.0f, 0.0f);
-	glm::mat4 scaling = glm::scale(i4, glm::vec3(.3f, .3f, .3f));
-	frame.Draw(shapeShader, globalFramePos, i4, scaling);
+	Frame::Draw(shapeShader, globalFramePos, i4, .3f);
 
 	if (!USING_EMSCRIPTEN) {
 		if (setup) {

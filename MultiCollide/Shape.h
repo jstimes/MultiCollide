@@ -2,17 +2,9 @@
 
 #include <string>
 #include <vector>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
-// GLEW
-#define GLEW_STATIC
-#include <GL/glew.h>
-
-#include "ShapeUtils.h"
+#include "ShapeUtils.h" // includes MathUtils, GL calls, and functions for shapes
 #include "Arrow.h"
-#include "Shader.h"
 
 
 //An abstract class that defines common properties and behaviors among all
@@ -117,31 +109,35 @@ public:
 	virtual ~Shape() = 0 { }
 
 
-	Arrow velocityArrow;
+	//Arrow velocityArrow;
 
 	virtual void DrawInitialVelocity(Shader &shader) {
-		this->velocityArrow.updatePoints(centroid, centroid + curVelocity);
-		this->velocityArrow.Draw(shader);
+		//this->velocityArrow.updatePoints(centroid, centroid + curVelocity);
+		Arrow::Draw(shader, glm::l2Norm(curVelocity), 1.0f, curVelocity, centroid);
 	}
 
-	Arrow angularVelocityArrow;
+	//Arrow angularVelocityArrow;
 
 	virtual void DrawInitialAngularVelocity(Shader &shader) {
-		glm::vec3 axis = centroid + glm::normalize(angularVelocityAxis) * 1.3f * boundingSphereRadius;
+		/*glm::vec3 axis = centroid + glm::normalize(angularVelocityAxis) * 1.3f * boundingSphereRadius;
 		this->angularVelocityArrow.updatePoints(centroid, axis);
-		this->angularVelocityArrow.Draw(shader);
+		this->angularVelocityArrow.Draw(shader);*/
+
+		Arrow::Draw(shader, 1.3f * boundingSphereRadius, 1.0f, angularVelocityAxis, centroid);
 	}
 
-	Arrow rotationAxisArrow = Arrow(centroid, angularVelocityAxis);
+	//Arrow rotationAxisArrow = Arrow(centroid, angularVelocityAxis);
 
 	virtual void DrawRotationAxis(Shader &shader) {
 		glm::quat q = glm::angleAxis(rotationAngle, rotationAxis);//glm::quat_cast(rotation);
 		glm::vec3 axis = glm::vec3(q.x, q.y, q.z);
 		
 		if (!ShapeUtils::isZeroVec(axis)) {
-			axis = glm::normalize(axis) * 1.5f * boundingSphereRadius;
+			/*axis = glm::normalize(axis) * 1.5f * boundingSphereRadius;
 			this->rotationAxisArrow.updatePoints(centroid, centroid + axis);
-			this->rotationAxisArrow.Draw(shader);
+			this->rotationAxisArrow.Draw(shader);*/
+
+			Arrow::Draw(shader, 1.5f * boundingSphereRadius, .5f, axis, centroid);
 		}
 	}
 };

@@ -1,6 +1,5 @@
 #pragma once
-#include <glm\common.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+
 #include <vector>
 #include <string>
 #include <fstream>
@@ -68,11 +67,6 @@ public:
 	virtual void InitVAOandVBO(Shader &shader) override {
 
 		shader.Use();
-
-		this->velocityArrow = Arrow(this->centroid, centroid + curVelocity);
-		this->velocityArrow.InitBuffers();
-		this->angularVelocityArrow = Arrow(this->centroid, centroid + angularVelocityAxis);
-		this->angularVelocityArrow.InitBuffers();
 
 		ComputeMeshAttributes();
 		getVerticesFromTetrahedra();
