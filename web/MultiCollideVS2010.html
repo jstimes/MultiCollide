@@ -100,10 +100,10 @@
         outline: none;
       }
     </style>
-	  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
+	  <link rel="stylesheet" href="C:\Users\Jacob\Desktop\Work\jquery-ui-1.12.1.custom\jquery-ui.css">
   
-	  <script   src="https://code.jquery.com/jquery-3.1.0.min.js"   integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s="   crossorigin="anonymous"></script>
-	  <script   src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js"   integrity="sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E="   crossorigin="anonymous"></script>
+	  <script   src="C:\Users\Jacob\Desktop\Work\jquery-ui-1.12.1.custom\jquery-3.1.1.min.js"></script>
+	  <script   src="C:\Users\Jacob\Desktop\Work\jquery-ui-1.12.1.custom\jquery-ui.min.js"></script>
 	
   </head>
   <body>
@@ -113,7 +113,7 @@
     <div class="emscripten" id="status">Downloading...</div-->
 	
 	<div>
-		<h3>MultiCollide. A 3D rigid body impact simulator</h3>
+		<h3>MultiCollide: A 3D rigid body impact simulator</h3>
 	</div>
 
 <!--span id='controls'>
@@ -128,9 +128,31 @@
     </div>
 
      <div id = 'myControls'>
-	 <input type='button' class='ui-button ui-widget ui-corner-all' id='addShapeBtn' value='Add Shape'>
+	 <!--input type='button' class='ui-button ui-widget ui-corner-all' id='addShapeBtn' value='Add Shape'-->
+	 <ul id='addShapeMenu' style='width: 150px;'>
+		<li><div>Add Shape</div>
+			<ul id='submenu'>
+			<li id='addSphereBtn'><div>Sphere</div></li>
+			<li id='addCubeBtn'><div>Cube</div></li>
+			<li id='addEllipsoidBtn'> <div>Ellipsoid</div></li>
+			<li id='addSuperquadricBtn'><div>Superquadric</div></li>
+			<li id='addCustomSuperquadricBtn'><div>Custom Superquadric</div></li>
+			<li id='addMeshBtn'><div>Tetrahedral Mesh</div></li>
+			</ul>
+		</li>
+	</ul><br>
 	 <input type='button' class='ui-button ui-widget ui-corner-all' id='run' value='Run'>
-	<input type='button' class='ui-button ui-widget ui-corner-all' id='reset' value='Reset'>
+	<input type='button' class='ui-button ui-widget ui-corner-all' id='reset' value='Reset Scene'>
+	<input type='button' class='ui-button ui-widget ui-corner-all' id='resetCamera' value='Reset Camera'>
+		<br><br>
+		<span>Collision mode: </span><label><input type='checkbox' id='collisionMode' checked>Free fly</label><br><br>
+		<span>Shape rotation display: </span>
+		<label><input type='radio' name='rotationDisplay' value='rotationAxis' checked>Plot rotation axis</label>
+		<label><input type='radio' name='rotationDisplay' value='principalFrame'>Plot principal frame</label>
+		<label><input type='radio' name='rotationDisplay' value='noRotationDisplay'>No display</label>
+		<!--label><input type='radio' name='collisionMode' id='collision'>Collision</label-->
+		<br><br>
+	
 	<span>Camera control:</span>
 		<label>
 		<input class='cursorState' type='radio' name='cameraMode' id='cameraPan' checked>Pan
@@ -141,8 +163,8 @@
 		<label>
 		<input class='cursorState' type='radio' name='cameraMode' id='cameraZoom'>Zoom
 		</label>
+		
 		<br><br>
-	
 		<span>Cursor state:</span>
 		<label>
 		<input class='cursorState' type='radio' name='mode' id='translate' checked>Translate
@@ -171,7 +193,7 @@
 
 <!-- SIDEBAR -->
 
-<div id='sidebar' style='overflow-y: scroll; position: fixed; left: 0; top: 200px; bottom: 0; width: 200px; margin-left: 10px;'>
+<div id='sidebar' style='overflow-y: scroll; position: fixed; left: 0; top: 330px; bottom: 0; width: 280px; margin-left: 10px;'>
 	<span>Scene Shapes: </span>
 	<div id='shapesAccordion'>
 	
@@ -180,15 +202,24 @@
 	</div>
 </div>
 
-<div id='addShapeModal' title='Add Shape'>
-	<input type='button' id='addSphereBtn' value='Add Sphere'>
-	<input type='button' id='addCubeBtn' value='Add Cube'>
-	<input type='button' id='addEllipsoidBtn' value='Add Ellipsoid'>
-	<input type='button' id='addSuperquadricBtn' value='Add Superquadric'>
+<div id='customSuperquadricModal' title='Create Custom Superquadric'>
+	A1 (x-direction strecthing): <input type='text' id='a1' value='1'><br>
+	A2 (y-direction strecthing): <input type='text' id='a2' value='1'><br>
+	A3 (z-direction strecthing): <input type='text' id='a3' value='1'><br>
+	E1 (top-bottom roundedness): <input type='text' id='e1' value='1'><br>
+	E2 (horizontal roundedness): <input type='text' id='e2' value='1'><br><br>
+	<input type='button' id='addCustom' value='Add' >
+</div>
+
+<div id='meshModal' title='Add Tetrahedral Mesh'>
+
+	<hr><label>Upload custom mesh file:
+	<input type='file' value='Choose Mesh File' id='meshFileUpload'></label><br><br>
+	<!--input type='button' value='Add Custom Mesh' id='uploadMeshBtn' disabled--><br><br>
 </div>
 	
     <!--div class="emscripten_border"-->
-      <canvas style='position: fixed; left: 210px;' width='800' height='600' class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+      <canvas style='position: fixed; left: 300px;' width='800' height='600' class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     <!--/div-->
     <!--textarea id="output" rows="8"></textarea-->
 
