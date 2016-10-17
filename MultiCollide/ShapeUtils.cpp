@@ -10,7 +10,7 @@ void ShapeUtils::getCirclePoints(double radius, std::vector<GLdouble> &circleXpt
 	}
 }
 
-glm::dvec3 ShapeUtils::getNormalOfTriangle(glm::dvec3 &p1, glm::dvec3 &p2, glm::dvec3 &p3) {
+glm::vec3 ShapeUtils::getNormalOfTriangle(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3) {
 	glm::dvec3 normal;
 	glm::dvec3 V = p2 - p1;
 	glm::dvec3 W = p3 - p1;
@@ -26,7 +26,7 @@ void ShapeUtils::HouseholderOrthogonalization(glm::dvec3 n, glm::mat3 &H) {
 	//Determine vector h:
 	double normN = glm::length(n);
 	glm::dvec3 h;
-	h.x = abs(n.x - normN) > abs(n.x + normN) ? abs(n.x - normN) : abs(n.x + normN);
+	h.x = absf(n.x - normN) > absf(n.x + normN) ? absf(n.x - normN) : absf(n.x + normN);
 	h.y = n.y;
 	h.z = n.z;
 

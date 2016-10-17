@@ -17,7 +17,7 @@ public:
 
 	static void getCirclePoints(double radius, std::vector<GLdouble> &circleXpts, std::vector<GLdouble> &circleZpts, double ptOffset = 128.0f);
 
-	static glm::dvec3 getNormalOfTriangle(glm::dvec3 &p1, glm::dvec3 &p2, glm::dvec3 &p3);
+	static glm::vec3 getNormalOfTriangle(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3);
 
 	static void addTriangleToVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 normal, std::vector<GLfloat> &vec);
 
@@ -39,7 +39,7 @@ public:
 		float rotAngle = acos(glm::dot(b, a));
 
 		//In case b is parallel with a :
-		if (abs(a.x - b.x) < .0001f && abs(a.y - b.y) < .0001f && abs(a.z - b.z) < .0001f) {
+		if (absf(a.x - b.x) < .0001f && absf(a.y - b.y) < .0001f && absf(a.z - b.z) < .0001f) {
 
 			//Same vector:
 			if (glm::dot(a, b) > 0.0f) {
@@ -53,6 +53,17 @@ public:
 		}
 
 		return glm::rotate(glm::mat4(), rotAngle, rotAxis);
+	}
+
+	static float absf(float x) {
+		if (x < 0.0f) {
+			return -1.0f * x;
+		}
+		return x;
+	}
+
+	static bool isZeroVec(glm::vec3 vec) {
+		return (absf(vec.x) < 0.0001f && absf(vec.y) < 0.0001f && absf(vec.z) < 0.0001f);
 	}
 
 };

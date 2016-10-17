@@ -33,8 +33,8 @@ public:
 	Eigen::Vector3d v1end, v2end, w1end, w2end;
 
 	//Wrapper constructor that converts glm data types to Eigen, which is what's used by the program
-	Impact(float m1, float m2, float mu, float e, glm::dmat3 &R1, glm::dmat3 &R2, glm::dmat3 &Q1, glm::dmat3 &Q2, glm::dmat3 &RTAN,
-		glm::dvec3 &r1, glm::dvec3 &r2, glm::dvec3 &v1, glm::dvec3 &v2, glm::dvec3 &w1, glm::dvec3 &w2)
+	Impact(float m1, float m2, float mu, float e, glm::mat3 &R1, glm::mat3 &R2, glm::mat3 &Q1, glm::mat3 &Q2, glm::mat3 &RTAN,
+		glm::vec3 &r1, glm::vec3 &r2, glm::vec3 &v1, glm::vec3 &v2, glm::vec3 &w1, glm::vec3 &w2)
 
 		: Impact(m1, m2, mu, e, glmToEigenMatrix(R1), glmToEigenMatrix(R2), glmToEigenMatrix(Q1), glmToEigenMatrix(Q2),
 			glmToEigenMatrix(RTAN), glmToEigenVector(r1), glmToEigenVector(r2), glmToEigenVector(v1), glmToEigenVector(v2), 
@@ -558,17 +558,17 @@ public:
 
 private:
 
-	Eigen::Vector3d glmToEigenVector(glm::dvec3 &glmVec) 
+	Eigen::Vector3d glmToEigenVector(glm::vec3 &glmVec) 
 	{
 		return Eigen::Vector3d(glmVec.x, glmVec.y, glmVec.z);
 	}
 
-	glm::dvec3 eigenToGlmVector(Eigen::Vector3d &eigenVec) 
+	glm::vec3 eigenToGlmVector(Eigen::Vector3d &eigenVec) 
 	{
 		return glm::vec3(eigenVec(0), eigenVec(1), eigenVec(2));
 	}
 
-	Eigen::Matrix3d glmToEigenMatrix(glm::dmat3 &glmMat) 
+	Eigen::Matrix3d glmToEigenMatrix(glm::mat3 &glmMat) 
 	{
 		Eigen::Matrix3d eigenMat;
 

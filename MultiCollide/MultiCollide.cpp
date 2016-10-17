@@ -41,6 +41,7 @@
 #include "GLTextBox.h"
 #include "GLRoundedButton.h"
 
+#include "Frame.h"
 #include "Keyboard.h"
 #include "Text.h"
 
@@ -79,17 +80,6 @@ void Close();
 void DestroyViews();
 void DestroyShapes();
 
-//Functions for emscripten:
-int getNumShapes();
-float getShapeAttribute(unsigned int shapeIndex, std::string attribute);
-void setShapeAttribute(unsigned int shapeIndex, std::string attribute, float value);
-void removeShape(unsigned int index);
-int getSelectedShape();
-void setSelectedShape(unsigned int shapeIndex);
-void addDuplicateShape(unsigned int shapeIndex);
-void focusCameraOnShape(unsigned int index);
-void createCustomSuperquadric(float a1, float a2, float a3, float e1, float e2);
-
 glm::vec3 ClosestPointEstimate(Superquadric &sq, glm::mat4 rotation, glm::vec3 trans, glm::vec3 vectorToOtherSq) {
 	//Normalize vector, then convert to local coordinates of superquadric
 	//vectorToOtherSq = glm::normalize(vectorToOtherSq);
@@ -127,7 +117,7 @@ struct SidePanel {
 } sidePanelStr;
 
 // Window dimensions
-GLuint WIDTH = 1600, HEIGHT = 1400;
+GLuint WIDTH = 800, HEIGHT = 700;
 
 GLfloat deltaTime = 0.0f;    // Time between current frame and last frame
 GLfloat lastFrame = 0.0f;      // Time of last frame
@@ -162,6 +152,17 @@ bool paused = false;
 bool reverse = false;
 bool setup = true;
 
+bool closeProgram = false;
+
+//If true, objects should start animating from current spot in scene setup
+//If false, two+ objects should be in contact before pressing run.
+//  and upon pressing run, an initial position should be found so that objects
+//  are animated towards each other and hit with the preset velocities at configured contact point
+bool isFreeFly = true;
+
+bool plotPrincipalFrame = false;
+bool plotRotationAxis = true;
+
 
 float contactAccuracy = 0.00001f;
 
@@ -187,119 +188,611 @@ glm::mat4 sceneTransform;
 glm::mat4 inverseSceneTransform;
 glm::mat4 inverseProjection;
 
+Frame frame;
+
 //Used so objects don't 're-collide' before they have  
 // moved away from another colliding objects
 std::map<std::pair<int, int>, int> framesSinceCollision;
 
-void AddSuperquadric(Superquadric *superquad) {
-	SuperEllipsoid::sqSolidEllipsoid(*superquad);
-	Superquadric::InitializeClosestPoints(*superquad);
-	superquad->translation = superquad->centroid = glm::vec3(0.0f, 0.0f, 0.0f);
-	PositionShapeToAdd(superquad);
-	superquad->InitVAOandVBO(shapeShader);
-	shapes.push_back(superquad);
-}
+void AddTetrahedralMesh(TetrahedralMesh *mesh) {
+	PositionShapeToAdd(mesh);
+	mesh->InitVAOandVBO(shapeShader);
 
-void AddSphereOnClick() {
-	Superquadric *sphere = new Superquadric();
-	sphere->CreateSphere();
-	static int sphereNum = 1;
-	sphere->name = std::string("Sphere " + std::to_string(sphereNum++));
-	AddSuperquadric(sphere);
-}
-
-void AddCubeOnClick() {
-	Cube *cube = new Cube();
-	cube->InitVAOandVBO(shapeShader);
-	PositionShapeToAdd(cube);
-	shapes.push_back(cube);
-}
-
-void AddSuperquadricOnClick() {
-	//std::cout << "Clicked Add Superquadric" << std::endl;
-	Superquadric *superquad = new Superquadric();
-	superquad->a1 = 1.0f;
-	superquad->a2 = 1.0f;
-	superquad->a3 = 1.0f;
-	superquad->e1 = 3.0f;
-	superquad->e2 = 3.0f;  // .3f  1.0f  2.0f  3.0f
-	superquad->u1 = -glm::pi<float>() / 2.0f;
-	superquad->u2 = glm::pi<float>() / 2.0f;
-	superquad->v1 = -glm::pi<float>();
-	superquad->v2 = glm::pi<float>();
-	superquad->u_segs = 30;
-	superquad->v_segs = 30;
-	static int superquadNum = 1;
-	superquad->name = std::string("Superquadric " + std::to_string(superquadNum++));
-
-	AddSuperquadric(superquad);
-}
-
-void AddEllipsoidOnClick() {
-	//std::cout << "Clicked Add Ellipsoid" << std::endl;
-	Superquadric *superquad = new Superquadric();
-	superquad->a1 = 1.0f;
-	superquad->a2 = 1.0f;
-	superquad->a3 = 1.0f;
-	superquad->e1 = 1.5f;
-	superquad->e2 = 1.5f;  // .3f  1.0f  2.0f  3.0f
-	superquad->u1 = -glm::pi<float>() / 2.0f;
-	superquad->u2 = glm::pi<float>() / 2.0f;
-	superquad->v1 = -glm::pi<float>();
-	superquad->v2 = glm::pi<float>();
-	superquad->u_segs = 30;
-	superquad->v_segs = 30;
-	static int ellipsoidNum = 1;
-	superquad->name = std::string("Superquadric " + std::to_string(ellipsoidNum++));
-
-	AddSuperquadric(superquad);
-}
-
-void PauseOnClick() {
-	paused = !paused;
-}
-
-void StopOnClick() {
-	//DestroyViews();
-
-	for (unsigned int i = 0; i < shapes.size(); i++) {
-		shapes[i]->centroid = shapes[i]->translation;
-		shapes[i]->time = 0.0f;
+	//Replace with AABB when complete
+	float maxDist = maxDistanceFromCentroid(*mesh);
+	mesh->boundingSphereRadius = mesh->BoundingSphereBuffer + maxDist;
+	if (mesh->boundingSphereRadius > 4.0f) {
+		mesh->scaling = glm::vec3(.5f, .5f, .5f);
+		mesh->boundingSphereRadius *= .5f;
 	}
-	paused = false;
-	//InitLeftPanel();
-	//InitBottomPanel();
-	//InitCameraControls();
-	//InitViews();
-	setup = true;
-	if(!USING_EMSCRIPTEN)
-		InitSetupSceneTransform();
+	mesh->UsingBoundingSphere = true;
 
+	shapes.push_back(mesh);
 }
 
-//Clears shapes and resets camera
-void ResetOnClick() {
-	std::cout << "Clicked Reset" << std::endl;
-	DestroyShapes();
-	shapes.clear();
-	cameraPos = initialCameraPos;
-	cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-	view = glm::lookAt(cameraPos, cameraTarget, up);
-}
+//Defines what should be updated when shapes are clicked & dragged by mouse
+enum CursorType { translate = 0, rotate = 1, scale_uniform = 2, velocity = 3, angular_velocity = 4 };
+CursorType cursorState;
 
-void RunOnClick() {
-	setup = false;
-	sceneTransform = i4;
-	inverseSceneTransform = i4;
-	if (pickedShape != nullptr) {
-		pickedShape->objectColor = pickedShape->defaultColor;
+enum CameraState { pan = 0, tilt = 1, zoom = 2 };
+CameraState cameraState = pan;
+
+void ResetCursorState() {
+	switch (cursorState) {
+	case translate:
+		sidePanelStr.positionBtn->UnsetToggledColor();
+		break;
+	case rotate:
+		sidePanelStr.rotateBtn->UnsetToggledColor();
+		break;
+	case scale_uniform:
+		sidePanelStr.scaleUniformBtn->UnsetToggledColor();
+		break;
+	case velocity:
+		sidePanelStr.velocityBtn->UnsetToggledColor();
+	case angular_velocity:
+		sidePanelStr.angularVelocityBtn->UnsetToggledColor();
 	}
-	pickedShape = nullptr;
+}
 
-	//HidePanels();
+extern "C" {
+	int
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getNumShapes();
 
-	//views.push_back(pauseBtn);
-	//views.push_back(stopBtn);
+	bool newData = false;
+
+	bool
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		isNewData() {
+		bool toReturn = newData;
+
+		if (newData) {
+			newData = false;
+		}
+
+		return toReturn;
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setPlotPricipalFrame(bool plot) {
+			plotPrincipalFrame = plot;
+		}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setPlotRotaionAxis(bool plot) {
+			plotRotationAxis = plot;
+		}
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapePositionX(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapePositionY(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapePositionZ(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeVelocityX(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeVelocityY(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeVelocityZ(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeAngularVelocityX(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeAngularVelocityY(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeAngularVelocityZ(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeAngularVelocitySpeed(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeRotationAxisX(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeRotationAxisY(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeRotationAxisZ(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeRotationAngle(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeMass(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeFriction(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeRestitution(unsigned int shapeIndex);
+
+	float
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getShapeScale(unsigned int shapeIndex);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapePositionX(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapePositionY(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapePositionZ(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeVelocityX(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeVelocityY(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeVelocityZ(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeAngularVelocityX(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeAngularVelocityY(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeAngularVelocityZ(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeAngularVelocitySpeed(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeRotationAxisX(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeRotationAxisY(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeRotationAxisZ(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeRotationAngle(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeMass(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeFriction(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeRestitution(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setShapeScale(unsigned int shapeIndex, float value);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setCollisionMode(bool freeFly) {
+		isFreeFly = freeFly;
+	}
+
+
+	//void EMSCRIPTEN_KEEPALIVE setShapeAttribute(unsigned int shapeIndex, std::string attribute, float value);
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		removeShape(unsigned int index);
+
+	int
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getSelectedShape();
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setSelectedShape(unsigned int shapeIndex);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		addDuplicateShape(unsigned int shapeIndex);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		focusCameraOnShape(unsigned int index);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		createCustomSuperquadric(float a1, float a2, float a3, float e1, float e2);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		AddSuperquadric(Superquadric *superquad) {
+		SuperEllipsoid::sqSolidEllipsoid(*superquad);
+		Superquadric::InitializeClosestPoints(*superquad);
+		superquad->translation = superquad->centroid = glm::vec3(0.0f, 0.0f, 0.0f);
+		PositionShapeToAdd(superquad);
+		superquad->InitVAOandVBO(shapeShader);
+		shapes.push_back(superquad);
+
+		newData = true;
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		AddSphereOnClick() {
+		Superquadric *sphere = new Superquadric();
+		sphere->CreateSphere();
+		static int sphereNum = 1;
+		sphere->name = std::string("Sphere " + std::to_string(sphereNum++));
+		AddSuperquadric(sphere);
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		AddCubeOnClick() {
+		Cube *cube = new Cube();
+		cube->InitVAOandVBO(shapeShader);
+		PositionShapeToAdd(cube);
+		shapes.push_back(cube);
+
+		newData = true;
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		AddSuperquadricOnClick() {
+		//std::cout << "Clicked Add Superquadric" << std::endl;
+		Superquadric *superquad = new Superquadric();
+		superquad->a1 = 1.0f;
+		superquad->a2 = 1.0f;
+		superquad->a3 = 1.0f;
+		superquad->e1 = 3.0f;
+		superquad->e2 = 3.0f;  // .3f  1.0f  2.0f  3.0f
+		superquad->u1 = -glm::pi<float>() / 2.0f;
+		superquad->u2 = glm::pi<float>() / 2.0f;
+		superquad->v1 = -glm::pi<float>();
+		superquad->v2 = glm::pi<float>();
+		superquad->u_segs = 30;
+		superquad->v_segs = 30;
+		static int superquadNum = 1;
+		superquad->name = std::string("Superquadric " + std::to_string(superquadNum++));
+
+		AddSuperquadric(superquad);
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		AddEllipsoidOnClick() {
+		//std::cout << "Clicked Add Ellipsoid" << std::endl;
+		Superquadric *superquad = new Superquadric();
+		superquad->a1 = 1.0f;
+		superquad->a2 = 1.0f;
+		superquad->a3 = 1.0f;
+		superquad->e1 = 1.5f;
+		superquad->e2 = 1.5f;  // .3f  1.0f  2.0f  3.0f
+		superquad->u1 = -glm::pi<float>() / 2.0f;
+		superquad->u2 = glm::pi<float>() / 2.0f;
+		superquad->v1 = -glm::pi<float>();
+		superquad->v2 = glm::pi<float>();
+		superquad->u_segs = 30;
+		superquad->v_segs = 30;
+		static int ellipsoidNum = 1;
+		superquad->name = std::string("Superquadric " + std::to_string(ellipsoidNum++));
+
+		AddSuperquadric(superquad);
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		PauseOnClick() {
+		paused = !paused;
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		StopOnClick() {
+		//DestroyViews();
+
+		for (unsigned int i = 0; i < shapes.size(); i++) {
+			shapes[i]->centroid = shapes[i]->translation;
+			shapes[i]->time = 0.0f;
+		}
+		paused = false;
+		//InitLeftPanel();
+		//InitBottomPanel();
+		//InitCameraControls();
+		//InitViews();
+		setup = true;
+		if (!USING_EMSCRIPTEN)
+			InitSetupSceneTransform();
+
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		resetCameraState() {
+		cameraPos = initialCameraPos;
+		cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+		up = glm::vec3(0.0f, 1.0f, 0.0f);
+		view = glm::lookAt(cameraPos, cameraTarget, up);
+	}
+
+	//Clears shapes and resets camera
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		ResetOnClick() {
+		std::cout << "Clicked Reset" << std::endl;
+		DestroyShapes();
+		shapes.clear();
+		resetCameraState();
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		RunOnClick() {
+		if (!isFreeFly) {
+			int numShapes = getNumShapes();
+			for (int i = 0; i < numShapes; i++) {
+				shapes[i]->centroid = shapes[i]->translation = shapes[i]->centroid + -shapes[i]->curVelocity;
+			}
+		}
+
+		setup = false;
+		sceneTransform = i4;
+		inverseSceneTransform = i4;
+		if (pickedShape != nullptr) {
+			pickedShape->objectColor = pickedShape->defaultColor;
+		}
+		pickedShape = nullptr;
+
+		//HidePanels();
+
+		//views.push_back(pauseBtn);
+		//views.push_back(stopBtn);
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		uploadMesh(char* meshName, char* meshData);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		TranslateOnClick() {
+		if (!USING_EMSCRIPTEN) ResetCursorState();
+		cursorState = translate;
+		//std::cout << "Cursor state: translate" << std::endl;
+		if (!USING_EMSCRIPTEN) sidePanelStr.positionBtn->SetToggledColor();
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		RotateOnClick() {
+		if (!USING_EMSCRIPTEN) ResetCursorState();
+		cursorState = rotate;
+		//std::cout << "Cursor state: rotate" << std::endl;
+		if (!USING_EMSCRIPTEN) sidePanelStr.rotateBtn->SetToggledColor();
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		ScaleOnClick() {
+		if (!USING_EMSCRIPTEN) ResetCursorState();
+		cursorState = scale_uniform;
+		//std::cout << "Cursor state: scale" << std::endl;
+		if (!USING_EMSCRIPTEN) sidePanelStr.scaleUniformBtn->SetToggledColor();
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		VelocityOnClick() {
+		if (!USING_EMSCRIPTEN) ResetCursorState();
+		cursorState = velocity;
+		//std::cout << "Cursor state: velocity" << std::endl;
+		if (!USING_EMSCRIPTEN) sidePanelStr.velocityBtn->SetToggledColor();
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		AngularVelocityOnClick() {
+		if (!USING_EMSCRIPTEN) ResetCursorState();
+		cursorState = angular_velocity;
+		//std::cout << "Cursor state: angular velocity" << std::endl;
+		if (!USING_EMSCRIPTEN) sidePanelStr.angularVelocityBtn->SetToggledColor();
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setCameraStatePan() {
+		cameraState = pan;
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setCameraStateRotate() {
+		cameraState = tilt;
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		setCameraStateZoom() {
+		cameraState = zoom;
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		duplicateShape(unsigned int shapeIndex);
 }
 
 //TODO add panning, zooming, and QUATERNIONS
@@ -330,63 +823,6 @@ void CameraRightOnClick() {
 	cameraPos = glm::vec3(rot * glm::vec4(cameraPos.x, cameraPos.y, cameraPos.z, 1.0f));
 	view = glm::lookAt(cameraPos, cameraTarget, up);
 	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-}
-
-//Defines what should be updated when shapes are clicked & dragged by mouse
-enum CursorType { translate = 0, rotate = 1, scale_uniform = 2, velocity = 3, angular_velocity = 4};
-CursorType cursorState;
-
-void ResetCursorState() {
-	switch (cursorState) {
-	case translate:
-		sidePanelStr.positionBtn->UnsetToggledColor();
-		break;
-	case rotate:
-		sidePanelStr.rotateBtn->UnsetToggledColor();
-		break;
-	case scale_uniform:
-		sidePanelStr.scaleUniformBtn->UnsetToggledColor();
-		break;
-	case velocity:
-		sidePanelStr.velocityBtn->UnsetToggledColor();
-	case angular_velocity:
-		sidePanelStr.angularVelocityBtn->UnsetToggledColor();
-	}
-}
-
-void TranslateOnClick() {
-	if(!USING_EMSCRIPTEN) ResetCursorState();
-	cursorState = translate;
-	//std::cout << "Cursor state: translate" << std::endl;
-	if (!USING_EMSCRIPTEN) sidePanelStr.positionBtn->SetToggledColor();
-}
-
-void RotateOnClick() {
-	if (!USING_EMSCRIPTEN) ResetCursorState();
-	cursorState = rotate;
-	//std::cout << "Cursor state: rotate" << std::endl;
-	if (!USING_EMSCRIPTEN) sidePanelStr.rotateBtn->SetToggledColor();
-}
-
-void ScaleOnClick() {
-	if (!USING_EMSCRIPTEN) ResetCursorState();
-	cursorState = scale_uniform;
-	//std::cout << "Cursor state: scale" << std::endl;
-	if (!USING_EMSCRIPTEN) sidePanelStr.scaleUniformBtn->SetToggledColor();
-}
-
-void VelocityOnClick() {
-	if (!USING_EMSCRIPTEN) ResetCursorState();
-	cursorState = velocity;
-	//std::cout << "Cursor state: velocity" << std::endl;
-	if (!USING_EMSCRIPTEN) sidePanelStr.velocityBtn->SetToggledColor();
-}
-
-void AngularVelocityOnClick() {
-	if (!USING_EMSCRIPTEN) ResetCursorState();
-	cursorState = angular_velocity;
-	//std::cout << "Cursor state: angular velocity" << std::endl;
-	if (!USING_EMSCRIPTEN) sidePanelStr.angularVelocityBtn->SetToggledColor();
 }
 
 using Eigen::MatrixXd;
@@ -578,19 +1014,19 @@ class VelocityZonChange : public GLTextBox::TextChangedListener {
 
 class AngularVelocityXonChange : public GLTextBox::TextChangedListener {
 	void OnChange() {
-		pickedShape->rotationAxis.x = std::stof(bottomPanelStr.angularVelocityTextX->GetText());
+		pickedShape->angularVelocityAxis.x = std::stof(bottomPanelStr.angularVelocityTextX->GetText());
 	}
 };
 
 class AngularVelocityYonChange : public GLTextBox::TextChangedListener {
 	void OnChange() {
-		pickedShape->rotationAxis.y = std::stof(bottomPanelStr.angularVelocityTextY->GetText());
+		pickedShape->angularVelocityAxis.y = std::stof(bottomPanelStr.angularVelocityTextY->GetText());
 	}
 };
 
 class AngularVelocityZonChange : public GLTextBox::TextChangedListener {
 	void OnChange() {
-		pickedShape->rotationAxis.z = std::stof(bottomPanelStr.angularVelocityTextZ->GetText());
+		pickedShape->angularVelocityAxis.z = std::stof(bottomPanelStr.angularVelocityTextZ->GetText());
 	}
 };
 
@@ -766,12 +1202,20 @@ void InitBottomPanel() {
 using namespace Eigen;
 
 float gravity = 0.0f;// -9.8f;
-float timeUpdate = .001f;
+
+float timeUpdate = 
+#ifdef EMSCRIPTEN_KEEPALIVE
+.01f;
+#endif
+#ifndef EMSCRIPTEN_KEEPALIVE
+.001f;
+#endif
+
 int numFramesToUpdatePerCollision = 10;
 
 bool go = false;
 
-bool mainLoop() {
+void mainLoop() {
 	// Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
 	glfwPollEvents();
 
@@ -781,7 +1225,8 @@ bool mainLoop() {
 		if (USING_EMSCRIPTEN) {
 			//emscripten_force_exit(0);
 		}
-		return false;
+		closeProgram = true;
+		return;
 	}
 
 	//Uncomment for wireframe mode:
@@ -805,12 +1250,12 @@ bool mainLoop() {
 					timeUpdate = -timeUpdate;
 				}
 				shapes[i]->time += timeUpdate;
+
+				float rotationFraction = .0005f;
+				shapes[i]->applyRotation(shapes[i]->angularVelocityAxis, shapes[i]->angularVelocity * rotationFraction);
 			}
 
 			shapes[i]->translation = shapes[i]->centroid + (shapes[i]->curVelocity * shapes[i]->time) + glm::vec3(0.0f, .5f * gravity * shapes[i]->time * shapes[i]->time, 0.0f);
-
-			float rotationFraction = .0005f;
-			shapes[i]->rotation = glm::rotate(i4, shapes[i]->angularVelocity * rotationFraction, shapes[i]->rotationAxis) * shapes[i]->rotation;
 		}
 	}
 
@@ -863,16 +1308,17 @@ bool mainLoop() {
 	}
 
 	Render();
-	return true;
+	return;
 }
 
 int main()
 {
+
 	InitOpenGL();
 
 	inverseProjection = glm::inverse(projection);
 
-	if(!USING_EMSCRIPTEN) {
+	if (!USING_EMSCRIPTEN) {
 		InitSetupSceneTransform();
 		InitLeftPanel();
 		InitCameraControls();
@@ -950,43 +1396,12 @@ int main()
 	*/
 
 	if (!USING_EMSCRIPTEN) {
-		while (mainLoop()); //returns false when program should stop
+		while (!closeProgram)
+			mainLoop();
 
 		return 0;
 	}
 	else {
-		bool joke = false;
-		if (joke) {
-			void(*ptr)();
-			ptr = AddSphereOnClick;
-			ptr();
-			ptr = AddSuperquadricOnClick;
-			ptr();
-			ptr = AddCubeOnClick;
-			ptr();
-			ptr = AddEllipsoidOnClick;
-			ptr();
-
-			ptr = RunOnClick;
-			ptr();
-			ptr = ResetOnClick;
-			ptr();
-			ptr = StopOnClick;
-			ptr();
-			ptr = PauseOnClick;
-			ptr();
-
-			ptr = TranslateOnClick;
-			ptr();
-			ptr = RotateOnClick;
-			ptr();
-			ptr = ScaleOnClick;
-			ptr();
-			ptr = VelocityOnClick;
-			ptr();
-			ptr = AngularVelocityOnClick;
-			ptr();
-		}
 		//emscripten_set_main_loop(mainLoop, 0, 1);
 	}
 }
@@ -1035,10 +1450,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			arrows[0] = true;
 			pickedShape->centroid = pickedShape->translation = pickedShape->centroid + glm::vec3(-.1f, 0.0f, 0.0f);
 		}
-		else if(key== GLFW_KEY_LEFT && action == GLFW_RELEASE) {
+		else if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE) {
 			arrows[0] = false;
 		}
-		
+
 		if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
 			arrows[1] = true;
 			pickedShape->centroid = pickedShape->translation = pickedShape->centroid + glm::vec3(.1f, 0.0f, 0.0f);
@@ -1054,7 +1469,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		else if (key == GLFW_KEY_UP && action == GLFW_RELEASE) {
 			arrows[2] = false;
 		}
-		
+
 		if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
 			arrows[3] = true;
 			pickedShape->centroid = pickedShape->translation = pickedShape->centroid + glm::vec3(0.0f, -.1f, 0.0f);
@@ -1069,6 +1484,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 	glm::vec3 update = glm::vec3(0.0f, 0.0f, -.1f * yoffset);
 	if (pickedShape != nullptr) {
+		newData = true;
 		if (cursorState == translate) {
 			pickedShape->centroid = pickedShape->translation = pickedShape->centroid + update;
 
@@ -1077,10 +1493,17 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 			bottomPanelStr.positionTextZ->SetText(std::to_string(pickedShape->translation.z));
 		}
 		else if (cursorState == rotate) {
-			
+
 		}
 		else if (cursorState == scale_uniform) {
+			float previousScaling = pickedShape->scaling.x; // all should be equal
+
 			pickedShape->scaling += yoffset * .05f;
+
+			float newScaling = pickedShape->scaling.x;
+
+			float proportionalUpdate = newScaling / previousScaling;
+			pickedShape->boundingSphereRadius *= proportionalUpdate;
 
 			bottomPanelStr.scaleTextX->SetText(std::to_string(pickedShape->scaling.x));
 			bottomPanelStr.scaleTextY->SetText(std::to_string(pickedShape->scaling.y));
@@ -1094,11 +1517,11 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 			bottomPanelStr.velocityTextZ->SetText(std::to_string(pickedShape->curVelocity.z));
 		}
 		else if (cursorState == angular_velocity) {
-			pickedShape->rotationAxis += update;
-			pickedShape->angularVelocity = sqrtf(pickedShape->rotationAxis.x * pickedShape->rotationAxis.x + pickedShape->rotationAxis.y * pickedShape->rotationAxis.y + pickedShape->rotationAxis.z * pickedShape->rotationAxis.z);
-			bottomPanelStr.angularVelocityTextX->SetText("" + std::to_string(pickedShape->rotationAxis.x));
-			bottomPanelStr.angularVelocityTextY->SetText("" + std::to_string(pickedShape->rotationAxis.y));
-			bottomPanelStr.angularVelocityTextZ->SetText("" + std::to_string(pickedShape->rotationAxis.z));
+			pickedShape->angularVelocityAxis += update;
+			pickedShape->angularVelocity = sqrtf(pickedShape->angularVelocityAxis.x * pickedShape->angularVelocityAxis.x + pickedShape->angularVelocityAxis.y * pickedShape->angularVelocityAxis.y + pickedShape->angularVelocityAxis.z * pickedShape->angularVelocityAxis.z);
+			bottomPanelStr.angularVelocityTextX->SetText("" + std::to_string(pickedShape->angularVelocityAxis.x));
+			bottomPanelStr.angularVelocityTextY->SetText("" + std::to_string(pickedShape->angularVelocityAxis.y));
+			bottomPanelStr.angularVelocityTextZ->SetText("" + std::to_string(pickedShape->angularVelocityAxis.z));
 		}
 	}
 
@@ -1122,13 +1545,15 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 	yoffset *= sensitivity;
 
 	if (mouseDown[0] && pickedShape != nullptr) {
+		newData = true;
+
 		if (cursorState == translate) {
 			//glm::vec3 update(4.0f * xoffset / WIDTH, 4.0f * yoffset / HEIGHT, 0.0f);
 
 			//std::cout << update.x << update.y << std::endl;
 
 			glm::vec3 update(xoffset, yoffset, 0.0f);
-			pickedShape->centroid = pickedShape->translation = pickedShape->centroid + update;
+			bool slideUpdate = false;
 
 			for (unsigned int i = 0; i < shapes.size(); i++) {
 				Shape *other = shapes[i];
@@ -1136,8 +1561,8 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 
 					Superquadric *picked = dynamic_cast<Superquadric*>(pickedShape);
 					Superquadric *otherSq = dynamic_cast<Superquadric*>(other);
-					if (picked && other) {
-						
+					if (picked != nullptr && otherSq != nullptr) {
+
 						glm::vec3 closest1;
 						glm::vec3 closest2;
 						ParamPoint contactPt1, contactPt2;
@@ -1148,53 +1573,71 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 						float distance = glm::distance(closest1, closest2);
 						//Todo use consistent threshold
 						float slideContactAccuracy = .015f;
+
+						
 						if (distance < slideContactAccuracy || glm::dot(picked->translation - otherSq->translation, closest1 - closest2) < 0.0f) {
 
-							//Shape is now in contact with/intersecting another
-							//Undo half of update:
-							pickedShape->centroid = pickedShape->translation = pickedShape->centroid - .5f * update;
-
-							Superquadric::ClosestPointFramework(*picked, *otherSq, closest1, closest2, contactPt1, contactPt2);
-							float distance = glm::distance(closest1, closest2);
-
-							if (distance > slideContactAccuracy) {
-								//Not in contact anymore
-								return;
+							//User is dragging picked shape away from otherSq
+							if (glm::dot(update, (otherSq->centroid - picked->centroid)) < 0.0f) {
+								otherSq->objectColor = otherSq->defaultColor;
+								break;
 							}
+
+							otherSq->objectColor = otherSq->contactColor;
+							slideUpdate = true;
+
+							//Shape is in contact with/intersecting another
+
+							/*//Undo half of update:
+							pickedShape->centroid = pickedShape->translation = pickedShape->centroid - .5f * update;*/
+
+							//Superquadric::ClosestPointFramework(*picked, *otherSq, closest1, closest2, contactPt1, contactPt2);
+							//float distance = glm::distance(closest1, closest2);
+
+							//if (distance > slideContactAccuracy) {
+							//	//Not in contact anymore
+							//	return;
+							//}
 
 							//Shape is still in contact with/intersecting another
 							//Undo half of update:
-							pickedShape->centroid = pickedShape->translation = pickedShape->centroid - .5f * update;
+							//pickedShape->centroid = pickedShape->translation = pickedShape->centroid - .5f * update;
 
 							//THis will be new point of contact on otherSq's surface
 							glm::vec3 slideUpdate = Superquadric::SlideUpdate(*otherSq, contactPt2, update);
+							if (Superquadric::checkVecForNaN(slideUpdate)) {
+								std::cout << "nan slide update" << std::endl;
+								return;
+							}
 							glm::vec3 slidePt2 = contactPt2.pt + slideUpdate;
 
 
 							//contactPti.pt == GLOBAL PT 
 
 
-							//This is the point on pickedShape with a normal parallel to otherSq's new contact pt
+							//This is the point on pickedShape with a normal parallel to otherSq's new contact pt's normal
 							// (in global space)
 							glm::vec3 pickedShapeNewContactPt = Superquadric::SlidingSurfaceUpdate(*picked, *otherSq, contactPt1, slidePt2);
 							if (Superquadric::checkVecForNaN(pickedShapeNewContactPt)) {
 								std::cout << "nan slide pt" << std::endl;
 								return;
 							}
-							glm::vec3 pickedShapeTrans = Superquadric::getGlobalCoordinates(slidePt2, otherSq->translation, otherSq->rotation) - pickedShapeNewContactPt;
-
+							glm::mat4 otherRot = otherSq->getRotationMatrix();
+							//glm::vec3 pickedShapeTrans = Superquadric::getGlobalCoordinates(slidePt2, otherSq->translation, otherRot) - pickedShapeNewContactPt;
+							glm::vec3 pickedShapeTrans = slidePt2 - pickedShapeNewContactPt;
 
 							std::cout << "Original Move: " << update.x << ", " << update.y << ", " << update.z << std::endl;
 							std::cout << "Slide update: " << slideUpdate.x << ", " << slideUpdate.y << ", " << slideUpdate.z << std::endl;
 							std::cout << "Slide trans: " << pickedShapeTrans.x << ", " << pickedShapeTrans.y << ", " << pickedShapeTrans.z << std::endl;
-							
+
 
 							pickedShape->centroid = pickedShape->translation = pickedShape->centroid + pickedShapeTrans;
 
 							Superquadric::ClosestPointFramework(*picked, *otherSq, closest1, closest2, contactPt1, contactPt2);
 							distance = glm::distance(closest1, closest2);
-							if (distance < contactAccuracy || glm::dot(picked->translation - otherSq->translation, closest1 - closest2) < 0.0f) {
+							if (distance < 0.0f /*|| glm::dot(picked->translation - otherSq->translation, closest1 - closest2) < 0.0f*/) {
 								pickedShape->centroid = pickedShape->translation = pickedShape->centroid - slideUpdate;
+								std::cout << "slide update made shapes intersect" << std::endl;
 							}
 						}
 						else {
@@ -1203,6 +1646,10 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 
 					}
 				}
+			}
+
+			if (!slideUpdate) {
+				pickedShape->centroid = pickedShape->translation = pickedShape->centroid + update;
 			}
 
 			if (!USING_EMSCRIPTEN) {
@@ -1215,7 +1662,12 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 			//pickedShape->rotation
 
 			//MultiCollide::Quaternion orientation(pickedShape->rotation);
-			MultiCollide::Quaternion update( .035f, glm::vec3(-yoffset, xoffset, 0.0f));
+			float angle = .035f;
+			glm::vec3 axis(-yoffset, xoffset, 0.0f);
+			MultiCollide::Quaternion update(angle, axis);
+
+			/*glm::quat updateQ = glm::angleAxis(angle, axis);
+			std::cout << "updateQ: " << updateQ.x << " " << updateQ.y << " " << updateQ.z << " " << updateQ.w << std::endl;*/
 
 			bool inContact = false;
 
@@ -1249,9 +1701,11 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 
 							glm::vec3 contactPtGlobal = contactPt1.pt;
 
-							pickedShape->rotation = glm::rotate(i4, update.Angle(), update.Axis()) * pickedShape->rotation;
+							//pickedShape->rotation = glm::rotate(i4, update.Angle(), update.Axis()) * pickedShape->rotation;
+							pickedShape->applyRotation(update.Axis(), update.Angle());
 
-							glm::vec3 newPtGlobal = Superquadric::getGlobalCoordinates(pickedShapeNewContactPt, pickedShape->translation, pickedShape->rotation);
+							glm::mat4 pickedRot = pickedShape->getRotationMatrix();
+							glm::vec3 newPtGlobal = Superquadric::getGlobalCoordinates(pickedShapeNewContactPt, pickedShape->translation, pickedRot);
 
 							//Need to move the new contact pt so that it is where the original contact pt was
 							glm::vec3 transUpdate = contactPtGlobal - newPtGlobal;
@@ -1259,7 +1713,7 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 							std::cout << "transUpdate: " << transUpdate.x << ", " << transUpdate.y << " " << transUpdate.z << std::endl;
 
 							pickedShape->translation += transUpdate;
-							
+
 							if (Superquadric::checkVecForNaN(pickedShapeNewContactPt)) {
 								std::cout << "nan rotate pt" << std::endl;
 								return;
@@ -1270,7 +1724,7 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 							/*Superquadric::ClosestPointFramework(*picked, *otherSq, closest1, closest2, contactPt1, contactPt2);
 							distance = glm::distance(closest1, closest2);
 							if (distance < contactAccuracy || glm::dot(picked->translation - otherSq->translation, closest1 - closest2) < 0.0f) {
-								pickedShape->centroid = pickedShape->translation = pickedShape->centroid - slideUpdate;
+							pickedShape->centroid = pickedShape->translation = pickedShape->centroid - slideUpdate;
 							}*/
 						}
 						else {
@@ -1282,16 +1736,22 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 			}
 
 			if (!inContact) {
-				glm::mat4 a = glm::rotate(glm::mat4(), update.Angle(), update.Axis()) * pickedShape->rotation;
-				glm::mat4 b = glm::rotate(i4, .075f, glm::vec3(-yoffset, xoffset, 0.0f)) * pickedShape->rotation;
-
-				pickedShape->rotation = glm::rotate(i4, .075f, glm::vec3(-yoffset, xoffset, 0.0f)) * pickedShape->rotation;
+				pickedShape->applyRotation(glm::vec3(-yoffset, xoffset, 0.0f), angle);
 			}
 		}
 		else if (cursorState == scale_uniform) {
 			//TODO - uniform & directional options?
-			
+
+			float previousScaling = pickedShape->scaling.x; // all components should be equal
+
 			pickedShape->scaling += yoffset;
+
+			float newScaling = pickedShape->scaling.x;
+
+			float proportionalUpdate = newScaling / previousScaling;
+			pickedShape->boundingSphereRadius *= proportionalUpdate;
+
+			std::cout << "BS radius: " << pickedShape->boundingSphereRadius << std::endl;
 
 			if (!USING_EMSCRIPTEN) {
 				bottomPanelStr.scaleTextX->SetText("" + std::to_string(pickedShape->scaling.x));
@@ -1310,15 +1770,35 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 			}
 		}
 		else if (cursorState == angular_velocity) {
-			pickedShape->rotationAxis += glm::vec3(xoffset, yoffset, 0.0f);
-			pickedShape->angularVelocity = sqrtf(pickedShape->rotationAxis.x * pickedShape->rotationAxis.x + pickedShape->rotationAxis.y * pickedShape->rotationAxis.y + pickedShape->rotationAxis.z * pickedShape->rotationAxis.z);
+			pickedShape->angularVelocityAxis += glm::vec3(xoffset, yoffset, 0.0f);
+			pickedShape->angularVelocity = sqrtf(pickedShape->angularVelocityAxis.x * pickedShape->angularVelocityAxis.x + pickedShape->angularVelocityAxis.y * pickedShape->angularVelocityAxis.y + pickedShape->angularVelocityAxis.z * pickedShape->angularVelocityAxis.z);
 			if (!USING_EMSCRIPTEN) {
-				bottomPanelStr.angularVelocityTextX->SetText("" + std::to_string(pickedShape->rotationAxis.x));
-				bottomPanelStr.angularVelocityTextY->SetText("" + std::to_string(pickedShape->rotationAxis.y));
-				bottomPanelStr.angularVelocityTextZ->SetText("" + std::to_string(pickedShape->rotationAxis.z));
+				bottomPanelStr.angularVelocityTextX->SetText("" + std::to_string(pickedShape->angularVelocityAxis.x));
+				bottomPanelStr.angularVelocityTextY->SetText("" + std::to_string(pickedShape->angularVelocityAxis.y));
+				bottomPanelStr.angularVelocityTextZ->SetText("" + std::to_string(pickedShape->angularVelocityAxis.z));
 				//TODO update speed
 			}
 		}
+	}
+	else if (mouseDown[0]) {
+		//didn't pick a shape, update camera based on camera state:
+		if (cameraState == pan) {
+			glm::vec3 update = glm::vec3(-xoffset, -yoffset, 0.0f);
+			cameraPos += update;
+			cameraTarget += update;
+		}
+		else if (cameraState == tilt) {
+			glm::mat4 xRotate = glm::rotate(i4, yoffset, glm::vec3(1.0f, 0.0f, 0.0f));
+			glm::mat4 yRotate = glm::rotate(i4, xoffset, glm::vec3(0.0f, 1.0f, 0.0f));
+
+			cameraPos = glm::vec3(yRotate * xRotate * glm::vec4(cameraPos.x, cameraPos.y, cameraPos.z, 1.0f));
+			up = glm::vec3(yRotate * xRotate * glm::vec4(up.x, up.y, up.z, 1.0f));
+		}
+		else {
+			//zoom:
+			cameraPos += yoffset * cameraPos;
+		}
+		view = glm::lookAt(cameraPos, cameraTarget, up);
 	}
 
 	mouseXvp = xPos;
@@ -1329,8 +1809,6 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 
 	mouseY = yPos / HEIGHT;
 	mouseY = ((mouseY - .5f) / -.5f);
-
-
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -1381,7 +1859,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 		if (setup && shapes.size() != 0) {
 			float x = (2.0f * mouseX) / WIDTH - 1.0f;
 			float y = 1.0f - (2.0f * mouseY) / HEIGHT;
-			float z = 1.0f; 
+			float z = 1.0f;
 
 			//Click pos in NDC:
 			//glm::vec4 rayNDC = glm::vec4(x, y, -1.0f, 1.0f);
@@ -1420,28 +1898,35 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 			for (std::vector<Shape*>::iterator it = shapes.begin(); it != shapes.end(); it++) {
 				Shape *shape = (*it);
 				glm::vec3 C = shape->centroid;
-				float r = shape->boundingSphereRadius - shape->BoundingSphereBuffer;
-				glm::vec3 OminusC = cameraPos - C;
-				float b = glm::dot(rayWorld, OminusC);
-				float c = glm::dot(OminusC, OminusC) - (r * r);
 
-				float bSquaredMinusC = (b*b) - c;
+				if (shape->UsingBoundingSphere) {
+					float r = shape->boundingSphereRadius - shape->BoundingSphereBuffer;
+					glm::vec3 OminusC = cameraPos - C;
+					float b = glm::dot(rayWorld, OminusC);
+					float c = glm::dot(OminusC, OminusC) - (r * r);
 
-				//if less than 0, solution to quadratic is imaginary, i.e. a miss
+					float bSquaredMinusC = (b*b) - c;
 
-				if (bSquaredMinusC >= 0.0f) {
-					//TODO if == 0.0f
+					//if less than 0, solution to quadratic is imaginary, i.e. a miss
 
-					float t1, t2, squareRoot;
-					squareRoot = glm::sqrt(bSquaredMinusC);
-					t1 = -b + squareRoot;
-					t2 = -b - squareRoot;
+					if (bSquaredMinusC >= 0.0f) {
+						//TODO if == 0.0f
 
-					float closest = (t1 < t2 ? t1 : t2);
-					if (closest > 0.0f && closest < minDistance) {
-						minDistance = closest;
-						pickedShape = shape;
+						float t1, t2, squareRoot;
+						squareRoot = glm::sqrt(bSquaredMinusC);
+						t1 = -b + squareRoot;
+						t2 = -b - squareRoot;
+
+						float closest = (t1 < t2 ? t1 : t2);
+						if (closest > 0.0f && closest < minDistance) {
+							minDistance = closest;
+							pickedShape = shape;
+						}
+
 					}
+				}
+				else {
+					//check for bounding box intersection:
 
 				}
 			}
@@ -1460,9 +1945,9 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 					bottomPanelStr.velocityTextY->SetText("" + std::to_string(pickedShape->curVelocity.y));
 					bottomPanelStr.velocityTextZ->SetText("" + std::to_string(pickedShape->curVelocity.z));
 
-					bottomPanelStr.angularVelocityTextX->SetText("" + std::to_string(pickedShape->rotationAxis.x));
-					bottomPanelStr.angularVelocityTextY->SetText("" + std::to_string(pickedShape->rotationAxis.y));
-					bottomPanelStr.angularVelocityTextZ->SetText("" + std::to_string(pickedShape->rotationAxis.z));
+					bottomPanelStr.angularVelocityTextX->SetText("" + std::to_string(pickedShape->angularVelocityAxis.x));
+					bottomPanelStr.angularVelocityTextY->SetText("" + std::to_string(pickedShape->angularVelocityAxis.y));
+					bottomPanelStr.angularVelocityTextZ->SetText("" + std::to_string(pickedShape->angularVelocityAxis.z));
 					bottomPanelStr.angularVelocitySpeedText->SetText("" + std::to_string(pickedShape->angularVelocity));
 				}
 			}
@@ -1508,13 +1993,13 @@ void normalizeEigenVals(float eigenVal1, float eigenVal2, float eigenVal3, float
 
 float maxDistanceFromCentroid(TetrahedralMesh &mesh) {
 	float max = -1.0f;
-	glm::dvec3 centroid = mesh.MeshCentroid;
+	glm::vec3 centroid = mesh.centroid;
 	typedef std::vector<Tetrahedron>::iterator iter;
 	for (iter it = mesh.Tetrahedra.begin(); it != mesh.Tetrahedra.end(); it++) {
-		float distA = (float)glm::distance(centroid, it->a);
-		float distB = (float)glm::distance(centroid, it->b);
-		float distC = (float)glm::distance(centroid, it->c);
-		float distD = (float)glm::distance(centroid, it->d);
+		float distA = glm::distance(centroid, it->a);
+		float distB = glm::distance(centroid, it->b);
+		float distC = glm::distance(centroid, it->c);
+		float distD = glm::distance(centroid, it->d);
 		if (distA > max) {
 			max = distA;
 		}
@@ -1663,15 +2148,18 @@ bool BoundingSphereTest(Shape &s1, Shape &s2) {
 
 void Collision(Shape &s1, glm::vec3 contactPt1, Shape &s2, glm::vec3 contactPt2) {
 
-	glm::dmat3 R1 = glm::mat3(s1.rotation);
-	glm::dmat3 R2 = glm::mat3(s2.rotation);
+	glm::mat4 s1Rot = s1.getRotationMatrix();
+	glm::mat4 s2Rot = s2.getRotationMatrix();
+
+	glm::mat3 R1 = glm::mat3(s1Rot);
+	glm::mat3 R2 = glm::mat3(s2Rot);
 
 	//Todo get velocity updated by time
 	// -- func
 
 	//TODO Q matrices...?
-	glm::dmat3 RTAN, Q1, Q2;
-	glm::dvec3 r1, r2, v1, v2, w1, w2;
+	glm::mat3 RTAN, Q1, Q2;
+	glm::vec3 r1, r2, v1, v2, w1, w2;
 
 	//B, my graphics coordinate basis, is (x, y, z)
 	//B', the basis for impact analysis is  with z' in my y position, y' in my x spot, and x' in my z 
@@ -1685,19 +2173,19 @@ void Collision(Shape &s1, glm::vec3 contactPt1, Shape &s2, glm::vec3 contactPt2)
 
 	//TODO RTAN for other shapes..
 	if (sq) {
-		glm::vec3 normLocal = sq->unitnormal(Superquadric::getLocalCoordinates(contactPt1, sq->translation, sq->rotation));
-		glm::vec3 normGlobal = glm::vec3(sq->rotation * glm::vec4(normLocal.x, normLocal.y, normLocal.z, 1.0));
+		glm::vec3 normLocal = sq->unitnormal(Superquadric::getLocalCoordinates(contactPt1, sq->translation, s1Rot));
+		glm::vec3 normGlobal = glm::vec3(sq->getRotationMatrix() * glm::vec4(normLocal.x, normLocal.y, normLocal.z, 1.0));
 
 		//Rotate y to contact normal
 		RTAN = glm::mat3(ShapeUtils::rotationFromAtoB(glm::vec3(1.0, 0.0, 0.0), normGlobal));
 	}
 
-	r1 = Superquadric::getLocalCoordinates(contactPt1, s1.translation, s1.rotation);
-	r2 = Superquadric::getLocalCoordinates(contactPt2, s2.translation, s2.rotation);
+	r1 = Superquadric::getLocalCoordinates(contactPt1, s1.translation, s1Rot);
+	r2 = Superquadric::getLocalCoordinates(contactPt2, s2.translation, s2Rot);
 	v1 = s1.curVelocity;
 	v2 = s2.curVelocity;
-	w1 = s1.angularVelocity * s1.rotationAxis;
-	w2 = s2.angularVelocity * s2.rotationAxis;
+	w1 = s1.angularVelocity * s1.angularVelocityAxis;
+	w2 = s2.angularVelocity * s2.angularVelocityAxis;
 
 	////EX 1:
 	//r1 = glm::dvec3(1.0, 0.0, 0.0);
@@ -1774,7 +2262,7 @@ void InitOpenGL() {
 	glfwSetScrollCallback(window, scroll_callback);
 
 	glfwSetWindowSizeCallback(window, window_size_callback);
-	
+
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 	// Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
@@ -1790,6 +2278,8 @@ void InitOpenGL() {
 
 	glLineWidth(3.0f);
 
+	frame.init();
+
 	// Build and compile our shader program
 	if (!USING_EMSCRIPTEN) {
 		shapeShader = Shader("vertexShader.glsl", "fragmentShader.glsl");
@@ -1804,7 +2294,7 @@ void InitOpenGL() {
 	projLoc = glGetUniformLocation(shapeShader.Program, "projection");
 	lightPosLoc = glGetUniformLocation(shapeShader.Program, "lightPos");
 	objectColorLoc = glGetUniformLocation(shapeShader.Program, "objectColor");
-	if(!USING_EMSCRIPTEN)
+	if (!USING_EMSCRIPTEN)
 		sceneTransformLoc = glGetUniformLocation(shapeShader.Program, "sceneTransform");
 }
 
@@ -1826,7 +2316,7 @@ void InitCameraControls() {
 
 	GLView *leftBtn = new GLView(.075f, .025f);
 	leftBtn->SetColor(glm::vec4(.9f, .9f, .9f, 1.0f));
-	leftBtn->Translate(glm::vec3(.85f - .075f, .85f -  .025f, 0.0f));
+	leftBtn->Translate(glm::vec3(.85f - .075f, .85f - .025f, 0.0f));
 	leftBtn->SetClickListener(CameraLeftOnClick);
 	views.push_back(leftBtn);
 
@@ -1854,7 +2344,7 @@ void PositionShapeToAdd(Shape *shape) {
 
 	bool valid = false;
 
-	while(!valid){
+	while (!valid) {
 
 		valid = true;
 
@@ -1878,7 +2368,7 @@ void PositionShapeToAdd(Shape *shape) {
 void Render() {
 
 	shapeShader.Use();
-	
+
 	// Clear the colorbuffer
 	glClearColor(0.0f, 0.8f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1888,31 +2378,51 @@ void Render() {
 	glUniform3f(lightPosLoc, lightPos.x, lightPos.y, lightPos.z);
 	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-	if(!USING_EMSCRIPTEN)
+	if (!USING_EMSCRIPTEN)
 		glUniformMatrix4fv(sceneTransformLoc, 1, GL_FALSE, glm::value_ptr(sceneTransform));
 
 	//Draw each superquadric based on its own translation && rotation
 	for (std::vector<Shape*>::iterator it = shapes.begin(); it != shapes.end(); it++) {
 		Shape *shape = (*it);
 
-		shape->model = glm::scale((glm::translate(glm::mat4(), shape->translation) * shape->rotation), shape->scaling);
+		glm::mat4 shapeRot = shape->getRotationMatrix();
+
+		shape->model = glm::scale((glm::translate(glm::mat4(), shape->translation) * shapeRot), shape->scaling);
 		//shape->model = glm::translate(shape->rotation * (glm::scale(i4, shape->scaling)), shape->translation);
 
 		glUniform3f(objectColorLoc, shape->objectColor.x, shape->objectColor.y, shape->objectColor.z);
+		//glUniform3fv(objectColorLoc, 3, &(shape->objectColor[0]));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(shape->model));
-		
+
 		shape->Draw(shapeShader);
+		if (plotPrincipalFrame) {
+			glm::mat4 scaleMatrix = glm::scale(i4, glm::vec3(shape->scaling * shape->boundingSphereRadius * 1.5f));
+			frame.Draw(shapeShader, shape->translation, shapeRot, scaleMatrix);
+		}
+		if (plotRotationAxis) {
+			glUniform3f(objectColorLoc, .8f, .1f, .1f);
+			shape->DrawRotationAxis(shapeShader);
+		}
 
 		//Draw velociy:
 		if (setup) {
 
-			shape->DrawInitialVelocity(shapeShader);
+			if (cursorState == velocity) {
+				glUniform3f(objectColorLoc, 0.5f, 0.0f, 0.5f);
+				shape->DrawInitialVelocity(shapeShader);
+			}
 
 			if (cursorState == angular_velocity) {
+				glUniform3f(objectColorLoc, 1.0f, 0.5f, 0.0f);
 				shape->DrawInitialAngularVelocity(shapeShader);
 			}
 		}
 	}
+
+	//Render global frame in lower left corner:
+	glm::vec3 globalFramePos = glm::vec3(1.0f, -1.0f, 0.0f);
+	glm::mat4 scaling = glm::scale(i4, glm::vec3(.3f, .3f, .3f));
+	frame.Draw(shapeShader, globalFramePos, i4, scaling);
 
 	if (!USING_EMSCRIPTEN) {
 		if (setup) {
@@ -1932,13 +2442,13 @@ void Render() {
 
 //Called on tear down
 void Close() {
-	
+
 	DestroyShapes();
 
 	if (!USING_EMSCRIPTEN) {
 		DestroyViews();
 	}
-	
+
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
 }
@@ -1965,103 +2475,154 @@ int getNumShapes() {
 	return shapes.size();
 }
 
-float getShapeAttribute(unsigned int shapeIndex, std::string attribute) {
-	if (shapeIndex < 0 || shapeIndex >= shapes.size()) {
-		std::cout << "Not a valid shape index" << std::endl;
-		return NAN;
-	}
-
-	Shape *shape = shapes[shapeIndex];
-	if (attribute == "positionx") {
-		return shape->translation.x;
-	}
-	else if (attribute == "positiony") {
-		return shape->translation.y;
-	}
-	else if (attribute == "positionz") {
-		return shape->translation.z;
-	}
-	else if (attribute == "velocityx") {
-		return shape->curVelocity.x;
-	}
-	else if (attribute == "velocityy") {
-		return shape->curVelocity.y;
-	}
-	else if (attribute == "velocityz") {
-		return shape->curVelocity.z;
-	}
-	else if (attribute == "angularvelocityx") {
-		return shape->rotationAxis.x;
-	}
-	else if (attribute == "angularvelocityy") {
-		return shape->rotationAxis.y;
-	}
-	else if (attribute == "angularvelocityz") {
-		return shape->rotationAxis.z;
-	}
-	else if (attribute == "mass") {
-		return shape->mass;
-	}
-	else if (attribute == "friction") {
-		return shape->frictionCoefficient;
-	}
-	else if (attribute == "restitution") {
-		return shape->restitutionCoefficient;
-	}
-	else if (attribute == "scale") {
-		return shape->scaling.x; // only allowing uniform scaling so should be the same for each component
-	}
-	else {
-		return 0.0;
-	}
+float getShapePositionX(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->translation.x;
 }
 
-void setShapeAttribute(unsigned int shapeIndex, std::string attribute, float value) {
-	if (shapeIndex < 0 || shapeIndex >= shapes.size()) {
-		std::cout << "Not a valid shape index" << std::endl;
-		return;
-	}
+float getShapePositionY(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->translation.y;
+}
 
-	Shape *shape = shapes[shapeIndex];
-	if (attribute == "positionx") {
-		shape->translation.x = value;
-	}
-	else if (attribute == "positiony") {
-		shape->translation.y = value;
-	}
-	else if (attribute == "positionz") {
-		shape->translation.z = value;
-	}
-	else if (attribute == "velocityx") {
-		shape->curVelocity.x = value;
-	}
-	else if (attribute == "velocityy") {
-		shape->curVelocity.y = value;
-	}
-	else if (attribute == "velocityz") {
-		shape->curVelocity.z = value;
-	}
-	else if (attribute == "angularvelocityx") {
-		shape->rotationAxis.x = value;
-	}
-	else if (attribute == "angularvelocityy") {
-		shape->rotationAxis.y = value;
-	}
-	else if (attribute == "angularvelocityz") {
-		shape->rotationAxis.z = value;
-	}
-	else if (attribute == "mass") {
-		shape->mass = value;
-	}
-	else if (attribute == "friction") {
-		shape->frictionCoefficient = value;
-	}
-	else if (attribute == "restitution") {
-		shape->restitutionCoefficient = value;
-	}
-	else if (attribute == "scale") {
-		shape->scaling.x = shape->scaling.y = shape->scaling.z = value;
-	}
+float getShapePositionZ(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->translation.z;
+}
+
+float getShapeVelocityX(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->curVelocity.x;
+}
+
+float getShapeVelocityY(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->curVelocity.y;
+}
+
+float getShapeVelocityZ(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->curVelocity.z;
+}
+
+float getShapeAngularVelocityX(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->angularVelocityAxis.x;
+}
+
+float getShapeAngularVelocityY(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->angularVelocityAxis.y;
+}
+
+float getShapeAngularVelocityZ(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->angularVelocityAxis.z;
+}
+
+float getShapeAngularVelocitySpeed(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->angularVelocity;
+}
+
+float getShapeRotationAxisX(unsigned int shapeIndex) {
+	return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).x;
+}
+
+float getShapeRotationAxisY(unsigned int shapeIndex) {
+	return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).y;
+}
+
+float getShapeRotationAxisZ(unsigned int shapeIndex) {
+	return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).z;
+}
+
+float getShapeRotationAngle(unsigned int shapeIndex) {
+	return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).w;
+}
+
+float getShapeMass(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->mass;
+}
+
+float getShapeFriction(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->frictionCoefficient;
+}
+
+float getShapeRestitution(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->restitutionCoefficient;
+}
+
+float getShapeScale(unsigned int shapeIndex) {
+	return shapes[shapeIndex]->scaling.x;
+}
+
+void setShapePositionX(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->translation.x = value;
+	shapes[shapeIndex]->centroid.x = value;
+}
+
+void setShapePositionY(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->translation.y = value;
+	shapes[shapeIndex]->centroid.y = value;
+}
+
+void setShapePositionZ(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->translation.z = value;
+	shapes[shapeIndex]->centroid.z = value;
+}
+
+void setShapeVelocityX(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->curVelocity.x = value;
+}
+
+void setShapeVelocityY(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->curVelocity.y = value;
+}
+
+void setShapeVelocityZ(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->curVelocity.z = value;
+}
+
+void setShapeAngularVelocityX(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->angularVelocityAxis.x = value;
+	//shapes[shapeIndex]->angularVelocity = sqrtf(shapes[shapeIndex]->angularVelocityAxis.x * shapes[shapeIndex]->angularVelocityAxis.x + shapes[shapeIndex]->angularVelocityAxis.y * shapes[shapeIndex]->angularVelocityAxis.y + shapes[shapeIndex]->angularVelocityAxis.z * shapes[shapeIndex]->angularVelocityAxis.z);
+}
+
+void setShapeAngularVelocityY(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->angularVelocityAxis.y = value;
+	//shapes[shapeIndex]->angularVelocity = sqrtf(shapes[shapeIndex]->angularVelocityAxis.x * shapes[shapeIndex]->angularVelocityAxis.x + shapes[shapeIndex]->angularVelocityAxis.y * shapes[shapeIndex]->angularVelocityAxis.y + shapes[shapeIndex]->angularVelocityAxis.z * shapes[shapeIndex]->angularVelocityAxis.z);
+}
+
+void setShapeAngularVelocityZ(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->angularVelocityAxis.z = value;
+	//shapes[shapeIndex]->angularVelocity = sqrtf(shapes[shapeIndex]->angularVelocityAxis.x * shapes[shapeIndex]->angularVelocityAxis.x + shapes[shapeIndex]->angularVelocityAxis.y * shapes[shapeIndex]->angularVelocityAxis.y + shapes[shapeIndex]->angularVelocityAxis.z * shapes[shapeIndex]->angularVelocityAxis.z);
+}
+
+void setShapeAngularVelocitySpeed(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->angularVelocity = value;
+}
+
+void setShapeRotationAxisX(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->rotationAxis.x = value;
+}
+
+void setShapeRotationAxisY(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->rotationAxis.y = value;
+}
+
+void setShapeRotationAxisZ(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->rotationAxis.z = value;
+}
+
+void setShapeRotationAngle(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->rotationAngle = value;
+}
+
+void setShapeMass(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->mass = value;
+}
+
+void setShapeFriction(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->frictionCoefficient = value;
+}
+
+void setShapeRestitution(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->restitutionCoefficient = value;
+}
+
+void setShapeScale(unsigned int shapeIndex, float value) {
+	shapes[shapeIndex]->scaling.x = shapes[shapeIndex]->scaling.y = shapes[shapeIndex]->scaling.z = value;
 }
 
 std::string getShapeName(unsigned int shapeIndex) {
@@ -2096,7 +2657,7 @@ int getSelectedShape() {
 			return i;
 		}
 	}
-	
+
 	std::cout << "Not found" << std::endl;
 	return -1;
 }
@@ -2128,7 +2689,7 @@ void createCustomSuperquadric(float a1, float a2, float a3, float e1, float e2) 
 	superquad->a2 = a2;
 	superquad->a3 = a3;
 	superquad->e1 = e1;
-	superquad->e2 = e1;  // .3f  1.0f  2.0f  3.0f
+	superquad->e2 = e2;  // .3f  1.0f  2.0f  3.0f
 	superquad->u1 = -glm::pi<float>() / 2.0f;
 	superquad->u2 = glm::pi<float>() / 2.0f;
 	superquad->v1 = -glm::pi<float>();
@@ -2139,4 +2700,18 @@ void createCustomSuperquadric(float a1, float a2, float a3, float e1, float e2) 
 	superquad->name = std::string("Custom " + std::to_string(superquadNum++));
 
 	AddSuperquadric(superquad);
+}
+
+//void uploadMesh(char* filePath) {
+//	TetrahedralMesh *mesh = new TetrahedralMesh(std::string(filePath));
+//	AddTetrahedralMesh(mesh);
+//}
+
+void uploadMesh(char* meshName, char* meshData) {
+	TetrahedralMesh *mesh = new TetrahedralMesh(meshName, meshData);
+	AddTetrahedralMesh(mesh);
+}
+
+void duplicateShape(unsigned int shapeIndex) {
+	Shape *shapePtr = shapes[shapeIndex];
 }

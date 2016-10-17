@@ -10,6 +10,8 @@
 #define GLEW_STATIC
 #include <GL/glew.h>
 
+#include "ShapeUtils.h"
+
 
 class ArrowHead {
 
@@ -18,6 +20,10 @@ private:
 
 	GLuint VAO, VBO;
 
+	float maxScale = .1f;
+
+	float scaling = maxScale;
+
 	std::vector<GLfloat> vertices;
 
 	void InitVertices() {
@@ -25,7 +31,8 @@ private:
 
 		glm::mat4 rotation;
 		glm::vec3 axis = glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-		rotation = glm::rotate(glm::mat4(), acos(glm::dot(glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)), glm::normalize(glm::vec3(1.0f, 0.0f, 0.0f)))), axis);
+		float angle = acos(glm::dot(glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)), glm::normalize(glm::vec3(1.0f, 0.0f, 0.0f))));
+		rotation = glm::rotate(glm::mat4(), angle, axis);
 
 		//Orient tetrahedron so that 'tip' has just an x component:
 		base1 = glm::vec3(rotation * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f));
@@ -34,9 +41,9 @@ private:
 		tip = glm::vec3(rotation * glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
 		glm::vec3 base123norm = glm::normalize(glm::cross(base3 - base1, base2 - base1));
-		glm::vec3 base12tipnorm = glm::normalize(glm::cross(tip - base1, base2 - base1));
-		glm::vec3 base13tipnorm = glm::normalize(glm::cross(base3 - base1, tip - base1));
-		glm::vec3 base23tipnorm = glm::normalize(glm::cross(base3 - base1, base2 - base1));
+		glm::vec3 base12tipnorm = glm::normalize(glm::cross(base2 - base1, tip - base1));
+		glm::vec3 base13tipnorm = glm::normalize(glm::cross(base1 - base3, tip - base3));
+		glm::vec3 base23tipnorm = glm::normalize(glm::cross(base3 - base2, tip - base2));
 
 
 		vertices.push_back(base1.x);
@@ -132,15 +139,17 @@ private:
 
 public:
 
-	ArrowHead() {}
-
 	ArrowHead(glm::vec3 base, glm::vec3 tip) {
 
 		InitVertices();
 
-		InitBuffers();
-
 		UpdateModel(base, tip);
+	}
+
+	void SetArrowHeadScaling(float scale) {
+		if (scale > maxScale)
+			scale = maxScale;
+		scaling = scale;
 	}
 
 	void UpdateModel(glm::vec3 base, glm::vec3 tip) {
@@ -174,7 +183,7 @@ public:
 
 		glm::mat4 rotation = ShapeUtils::rotationFromAtoB(glm::vec3(1.0f, 0.0f, 0.0f), direction);
 
-		glm::mat4 scale = glm::scale(glm::mat4(), glm::vec3(.1f, .1f, .1f));
+		glm::mat4 scale = glm::scale(glm::mat4(), glm::vec3(scaling, scaling, scaling));
 
 		this->model = translation * rotation * scale;
 	}
@@ -205,6 +214,7 @@ public:
 	}
 
 	~ArrowHead() {
+		std::cout << "aHead deleted" << std::endl;
 		glDeleteBuffers(1, &this->VAO);
 		glDeleteBuffers(1, &this->VBO);
 	}
