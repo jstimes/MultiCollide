@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Emscripten-Generated Code</title>
+	<style>
+		.warning {
+			color: red;
+		}
+	</style>
+  </head>
+<body>
+
+	<h3>MultiCollide Documentation</h3>
+	Contents:
+	<ul>
+	<li><a href="#whatIs">What is MultiCollide</a>
+	<li><a href="#howTo">How to Use</a>
+	<li><a href="#issues">Known Issues</a>
+	</ul>
+	<br>
+	<h4 id='whatIs'>What is MultiCollide</h4>
+	
+	<p>
+	MultiCollide is a 3D rigid body impact simulator. Arrange shapes in a scene to set up collisions. Each shape can be moved around, resized, and given initial values for properties such as velocity and angular velocity. Upon clicking 'Run', all shapes will begin animating according to their preset values. When shapes collide with one another, their impact is modelled according to <a href='http://web.cs.iastate.edu/~jia/papers/CND16.pdf'>this paper</a>  by Yan-Bin Jia and Feifei Wang. 
+	
+	After the impact has been analyzed, the results are graphed on the scene. The left plot is the normal impulse curve, and the right plot is the sliding velocity curve.
+	
+	<br><br>
+	The main functionality of MultiCollide is complete, but there are still bugs to be fixed and improvements to be made. If you encounter an issue that is not listed below, or have a suggestion for the interface, please email me at <a href='mailto:jstimes@iastate.edu'>jstimes@iastate.edu</a>
+	</p>
+	
+	<h4 id='howTo'>How To Use</h4>
+	
+	<h5>Scene Setup</h5>
+	<p>
+	Begin by choosing some shapes from the 'Add Shape' dropdown in the top-left of the interface. You can orient each shape by clicking and dragging it <font class='warning'>(except for the cube and the icosahedron example. these are not meant to be configurable at this time)</font>. The selected cursor state determines how it is updated. The cursor state can be selected in the middle of the left panel. In addition to the cursor state, you may also select a camera control. This determines how the view of the scene is changed when you click and drag the scene background (without clicking a shape).Scrolling when a shape is selected (expressed by the green surface color) will also update it. Scrolling when the mouse is within the scene (blue background) will always zoom the camera <font class='warning'>(note that scrolling with a mouse wheel causes large jumps)</font>.</p>
+	
+	<h5>Scene Shapes panel</h5>
+	<p>
+	The shapes can also be configured by directly setting the values in the 'Scene Shapes' panel on the right. Some values that can't be set with the mouse can be configured here, such as coefficients of restitution and friction. <font class='warning'> (There are also some buttons in this panel. the 'Remove Shape' button is not completely reliable, it's best to click 'Reset Scene'. 'Duplicate Shape' is not yet implemented)</font>
+	</p>
+	
+	<h5>Impulse/Velocity Graph Controls</h5>
+	<ul>
+		<li>'Continue' - closes the graphs and enables the simulation to continue
+		<li>'Restart' - restarts the animation of the plots
+		<li>'Toggle -- Plane' - Will toggle the display of a translucent plane, which can help view the graph 
+		<li>'Look Down - Axis' - moves the viewpoint so that it is looking down the chosen axis, which can help view the graph
+		<li>'Toggle Impulse/Velocity Graph' - Will toggle the display of the selected graph
+		<li>'j', 'k', 'l', 'i' - these keys will rotate the view of the scene in different directions
+	</ul>
+	
+	<h5>Other Controls</h5>
+	<p>
+	<ul>
+		<li>'Run' - starts the simulation. After clicking, changes to 'Pause' which 
+			freezes animation. 'Stop' will end the animation so setup can be performed again
+		<li>'Reset Scene' - clears all shapes from scene 
+		<li>'Reset Camera' - resets view of scene to original position
+		<li>'Collision Mode' -
+			<ul>
+				<li>Free fly - Shapes start animating from current configuration
+				<li>Not free fly - Each shape's orientation is integrated backwards to find its orientation at a previous time. Useful if you have a specific collision setup you'd like, but want to see the shapes animate before the contact <font class='warning'>(not always accurate)</font>
+			</ul>
+		<li>'Shape Rotation Display' -
+			<ul>
+				<li>Plot rotation axis - A red arrow is shown coming from the center of shapes. It represents the rotation axis about which the shape has been rotated from it's original orientation
+				<li>Plot principal frame - A frame is plotted at the center of each shape, representing its principal frame of rotation
+				<li>No display - No visual rotation information
+			</ul>
+	</ul>
+	</p>
+	
+	<h4 id='issues'>Known Issues</h4>
+	
+	My next priorities:
+	<ul>
+		<li>Interface can crash if the configuration of the 'icosahedron-tetrahedron example' is adjusted
+		<li>Layout of interface (right panel particularly) can have weird behavior
+		<li>WebGL does not allow drawing individual points, so the 'end of sliding' and 'end of compression' points in the impulse 
+		and velocity graphs are not shown 
+		<li>Also having weird issues with the rendering of lines in WebGL (the lines representing the curves)
+		<li>Sliding shapes along each other during scene setup has best performance with spheres, but gets worse for more irregular shaped objects
+	</ul>
+	
+	Less severe issues:
+	<p>
+	<ul>
+		<li>'Remove Shape' button in Scene Shapes panel will sometimes cause a crash
+		<li>Scrolling with a laptop scrollpad works well, but mouse scroll wheel does not (when translating shapes)
+		<li>No-free fly mode can sometimes cause unexpected animations
+		<li>Principal frame not aligned with rotation of shapes
+	</ul>
+	</p>
+
+</body>
+</html>
