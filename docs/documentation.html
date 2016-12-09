@@ -31,6 +31,7 @@
 	The main functionality of MultiCollide is complete, but there are still bugs to be fixed and improvements to be made. If you encounter an issue that is not listed below, or have a suggestion for the interface, please email me at <a href='mailto:jstimes@iastate.edu'>jstimes@iastate.edu</a>
 	</p>
 	
+	<br>
 	<h4 id='howTo'>How To Use</h4>
 	
 	<h5>Scene Setup</h5>
@@ -73,15 +74,22 @@
 	</ul>
 	</p>
 	
+	<br>
 	<h4 id='issues'>Known Issues</h4>
+	<font class='warning'>The impulse & velocity graph animation has a few issues running in the web and is currently under development.</font> Some planned changes:
+		<ul><li>Will have it's own panel, not cover the scene 
+			<li>Better controls for changing view of graph
+			<li>More visually pleasing, easier to interpret
+			<li>Units/ticks on axes
+		</ul>
 	
 	My next priorities:
 	<ul>
-		<li>Interface can crash if the configuration of the 'icosahedron-tetrahedron example' is adjusted
-		<li>Layout of interface (right panel particularly) can have weird behavior
 		<li>WebGL does not allow drawing individual points, so the 'end of sliding' and 'end of compression' points in the impulse 
 		and velocity graphs are not shown 
 		<li>Also having weird issues with the rendering of lines in WebGL (the lines representing the curves)
+		<li>Interface can crash if the configuration of the 'icosahedron-tetrahedron example' is adjusted
+		<li>Layout of interface (right panel particularly) can have weird behavior
 		<li>Sliding shapes along each other during scene setup has best performance with spheres, but gets worse for more irregular shaped objects
 	</ul>
 	
