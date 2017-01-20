@@ -1,0 +1,58 @@
+<!-- <html>
+	<head>
+		
+		<style>
+			iframe {
+			  height: 500px;
+			  width: 400px;
+			  resize: both;
+			  overflow: auto;
+			}
+		</style>
+		
+	</head>
+
+	<body>
+		
+		
+		<iframe src='graph2.html'>No iframes!</iframe>
+		<iframe src='graph1.html'>No iframes!</iframe>
+		
+		
+	</body>
+</html> -->
+
+<html>
+	<head>
+		
+		<style>
+			iframe {
+			  height: 500px;
+			  width: 400px;
+			  resize: both;
+			  overflow: auto;
+			}
+		</style>
+		
+		<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+		<!--script src="plotlyTest.js"></script-->
+		<script src="plotlyGraph2.js"></script>
+		
+		<!-- <script>grah();</script> -->
+		
+	</head>
+
+	<body>
+	
+		<div style='width:220px; border: 1px solid black;'>
+			<button onclick='grah()'>Graph1</button>
+			<div id="graphBig"></div>
+			<div id="thegraph"></div>
+		</div>
+		
+		<!--iframe src='graph2.html'>No iframes!</iframe>
+		<iframe src='graph1.html'>No iframes!</iframe-->
+		
+		
+	</body>
+</html>
