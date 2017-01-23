@@ -1,6 +1,4 @@
 $(function() {
-	
-	window.dispatchEvent(new Event('resize'));
 		  
 	$("#shapesAccordion").accordion({
 	  collapsible: true
@@ -559,10 +557,9 @@ var sceneShapesOpen = true;
 	}
 	
 	//var leftPx = $("#leftSidePanel").position.left + $("#leftSidePanel").position().offsetWidth;
-	var leftPx = 200 + 5;
+	var leftPx = 150 + 5;
 
 	var w = rightPx - leftPx;
-	
 	
 	if(typeof GLFW !== 'undefined'){
 		//document.getElementById('impulseControls').width = w;
@@ -743,6 +740,8 @@ var sceneShapesOpen = true;
  }
  
  function initSettings() {
+	window.dispatchEvent(new Event('resize'));
+	 
 	//Simulation Mode:
 	var simMode = localStorage.getItem('simMode');
 	$(":radio[name=dimension][value='" + simMode + "']").prop("checked", true);

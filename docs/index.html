@@ -21,30 +21,16 @@
 	
   </head>
   <body>
-    <!--div class="spinner" id='spinner'></div>
-    <div class="emscripten" id="status">Downloading...</div-->
 	
     <div id='o-wrapper' class='o-wrapper'>
 	
 	<div id='top'>
 		<span style='font-size: 22px;'>MultiCollide: A 3D rigid body impact simulator</span> &nbsp;
-		<a href='documentation.html'>Documentation & Issues</a>&nbsp; | &nbsp;
-		<a href='#' id="c-button--slide-top" >Settings</a>
+		<a href='#' id="c-button--slide-top" >Settings</a>&nbsp; | &nbsp;
+		<a href='documentation.html'>Documentation & Issues</a>
 	</div>
 
-<!--span id='controls'>
-  <span><input type="checkbox" id="resize">Resize canvas</span>
-  <span><input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer &nbsp;&nbsp;&nbsp;</span>
-  <span><input type="button" value="Fullscreen" onclick="Module.requestFullScreen(document.getElementById('pointerLock'))">
-  </span>
-</span-->
-
-    <!-- <div class="emscripten">
-      <progress value="0" max="100" id="progress" hidden=1></progress>
-    </div> -->
-
      <div id='leftSidePanel'>
-		 <!--input type='button' class='ui-button ui-widget ui-corner-all' id='addShapeBtn' value='Add Shape'-->
 		 <ul id='3DaddShapeMenu' style='width: 150px;'>
 			<li><div>Add Shape</div>
 				<ul id='3Dsubmenu'>
@@ -104,10 +90,7 @@
 			<input class='cursorState' type='radio' name='mode' id='angularVelocity'>Angular 
 			Velocity
 			</label>
-			<!--label><input type='radio' name='collisionMode' id='collision'>Collision</label-->
-			
-		
-	<br><br>
+		<br><br>
 	</div>
 
 <div id='customSuperquadricModal' title='Create Custom Superquadric'>
@@ -127,30 +110,12 @@
 <div id='meshModal' title='Add Tetrahedral Mesh'>
 
 	<hr><label>Upload custom mesh file:
-	<input type='file' value='Choose Mesh File' id='meshFileUpload'></label><br><br>
-	<!--input type='button' value='Add Custom Mesh' id='uploadMeshBtn' disabled--><br><br>
+	<input type='file' value='Choose Mesh File' id='meshFileUpload'></label><br><br><br><br>
 </div>
-	
-    <!--div class="emscripten_border"-->
 	
 	<div id='mainContent'>
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-	  
-	  <!--div id='impulseControls' class='bottom' style='display: none;'>
-		<input type='button' class='ui-button ui-widget ui-corner-all' id='impulseContinueBtn' value='Continue'>
-		<input type='button' class='ui-button ui-widget ui-corner-all' id='impulseRestartBtn' value='Restart'>
-		<input type='button' class='ui-button ui-widget ui-corner-all' id='lookDownXaxisBtn' value='Look down X-axis'>
-		<input type='button' class='ui-button ui-widget ui-corner-all' id='lookDownYaxisBtn' value='Look down Y-axis'>
-		<input type='button' class='ui-button ui-widget ui-corner-all' id='lookDownZaxisBtn' value='Look down Z-axis'>
-		<input type='button' class='ui-button ui-widget ui-corner-all' id='toggleXYplaneBtn' value='Toggle XY plane'>
-		<input type='button' class='ui-button ui-widget ui-corner-all' id='toggleXZplaneBtn' value='Toggle XZ plane'>
-		<input type='button' class='ui-button ui-widget ui-corner-all' id='toggleYZplaneBtn' value='Toggle YZ plane'>
-		<input type='button' class='ui-button ui-widget ui-corner-all' id='toggleImpulseBtn' value='Toggle Impulse Graph'>
-		<input type='button' class='ui-button ui-widget ui-corner-all' id='toggleVelocityBtn' value='Toggle Velocity Graph'>
-	  </div-->
 	</div>
-    <!--/div-->
-    <!--textarea id="output" rows="8"></textarea-->
 	
 	<div id='sceneShapesShowBtnDiv' style='display: none;'>
 		<input type='button' class='ui-button ui-widget ui-corner-all' 
@@ -295,7 +260,6 @@
 	<script type="text/javascript" src="graphs/vis-4.17.0/dist/vis.js"></script>
 	<script type='text/javascript' src='graphs/visGraphs.js'></script>
 	<script type='text/javascript' src='MultiCollide_UI.js'></script>
-    <!--script async type="text/javascript" src="MultiCollide.js"></script-->
 	<script>
 
     var scriptASM = document.createElement('script');

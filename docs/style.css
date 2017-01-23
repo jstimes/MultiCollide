@@ -230,7 +230,7 @@ img {
   #mainContent {
 	float: left;
 	margin-top: 50px;
-	width: 400px;
+	width: 300px;
 	height: 100%;
   }
   
@@ -257,7 +257,7 @@ img {
 	margin-left: 5px;
 	margin-right: 5px;
 	/*overflow-y: scroll;*/
-	width: 200px;
+	width: 150px;
 	float: left;
   }
   
