@@ -732,12 +732,14 @@ var sceneShapesOpen = true;
 		// accord.attr('height', 400);
 		
 		$("#impulseContinueBtn").click(function() {
+			stopVisualizations();
 			_continueImpulseOnClick();
 			$("#graphsContainer").remove();
 			$("#impactVisualizations").remove();
 		});
 		
 		$("#impulseRestartBtn").click(function() {
+			stopVisualizations();
 			$("#graph1").empty();
 			$("#graph2").empty();
 			drawVisualizations(impulsePts, velocityPts);
