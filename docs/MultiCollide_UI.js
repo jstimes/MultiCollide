@@ -63,30 +63,42 @@ $(function() {
 	
 	var isSettingUpScene = true;
  
-	var addShape = function() {
+	var addShape = function(offset) {
 		console.log("AddShape");
-		 var shapeIndex = _getNumShapes()-1;
-		 var shapeName = Pointer_stringify(_getShapeName());//.replace(" ", "");
+		if(!offset){
+			offset = 1;
+		}
+		 var shapeIndex = _getNumShapes()-offset;
+		 var shapeName = Pointer_stringify(_getShapeName(shapeIndex));
 		 
 		 var shape = getShapeData(shapeIndex);
 		 
-		 $('#shapesAccordion').append("<h4 id='shapeHeader" + shapeName + "'>" + shapeName + "</h4>" +
+		 var html = "<h4 id='shapeHeader" + shapeName + "'>" + shapeName + "</h4>" +
 			"<div class='tabs' id='shapeAccordion" + shapeName + "'>" +
-			"<ul><li><a href='#physical'>Physical</a></li>" +
+			"<ul><li><a href='#physical'>Physical Constants</a></li>" +
 			"<li><a href='#orientation'>Orientation</a></li>" +
-			"<li><a href='#movement'>Motion</a></li></ul>" +
+			"<li><a href='#movement'>Velocities</a></li></ul>" +
 			
 			"<div id='orientation'>" +
 			"<b>Position:</b><br>" +
 			"x: <input style='width:50px' type='text' class='positionx shapeData " + shapeName + "' value='" + shape["positionx"] + "'><br>" +
-			"y: <input style='width:50px' type='text' class='positiony shapeData " + shapeName + "'><br>" +
-			"z: <input style='width:50px' type='text' class='positionz shapeData " + shapeName + "'><br><br>" +
+			"y: <input style='width:50px' type='text' class='positiony shapeData " + shapeName + "'><br>";
 			
-			"<b>Rotation</b><br>" +
-			"Axis x: <input style='width:50px' type='text' class='rotationAxisX shapeData " + shapeName + "' value='0'><br>" +
-			"Axis y: <input style='width:50px' type='text' class='rotationAxisY shapeData " + shapeName + "' value='0'><br>" +
-			"Axis z: <input style='width:50px' type='text' class='rotationAxisZ shapeData " + shapeName + "' value='0'><br>" +
-			"Angle: <input style='width:50px' type='text' class='rotationAngle shapeData " + shapeName + "' value='0'><br><br>" +
+			if(!using2D){
+				html += "z: <input style='width:50px' type='text' class='positionz shapeData " + shapeName + "'>";
+			}
+			
+			html += "<br><br>" +
+			
+			"<b>Rotation</b><br>";
+			
+			if(!using2D) {
+				html += "Axis x: <input style='width:50px' type='text' class='rotationAxisX shapeData " + shapeName + "' value='0'><br>" +
+				"Axis y: <input style='width:50px' type='text' class='rotationAxisY shapeData " + shapeName + "' value='0'><br>" +
+				"Axis z: <input style='width:50px' type='text' class='rotationAxisZ shapeData " + shapeName + "' value='0'><br>";
+			}
+			
+			html += "Angle: <input style='width:50px' type='text' class='rotationAngle shapeData " + shapeName + "' value='0'><br><br>" +
 			
 			"</div>" +
 	
@@ -108,20 +120,31 @@ $(function() {
 			"<div id='movement'>" +
 			"<b>Velocity:</b><br>" +
 			"x: <input style='width:50px' type='text' class='velocityx shapeData " + shapeName + "'><br>" +
-			"y: <input style='width:50px' type='text' class='velocityy shapeData " + shapeName + "'><br>" +
-			"z: <input style='width:50px' type='text' class='velocityz shapeData " + shapeName + "'><br><br>" +
-	
-			"<b>Angular Velocity:</b><br>" +
-			"Rotation axis: <br>" +
-			"x: <input style='width:50px' type='text' class='angularvelocityx shapeData " + shapeName + "'><br>" +
-			"y: <input style='width:50px' type='text' class='angularvelocityy shapeData " + shapeName + "'><br>" +
-			"z: <input style='width:50px' type='text' class='angularvelocityz shapeData " + shapeName + "'><br>" +
-			"speed: <input style='width:50px' type='text' class='angularvelocityspeed shapeData " + shapeName + "'><br><br>" +
+			"y: <input style='width:50px' type='text' class='velocityy shapeData " + shapeName + "'><br>";
+			
+			if(!using2D){
+				html += "z: <input style='width:50px' type='text' class='velocityz shapeData " + shapeName + "'>";
+			}
+			
+			html += "<br><br>" + 
+			"<b>Angular Velocity:</b><br>";
+			
+			if(!using2D){
+				html += "Rotation axis: <br>" +
+				"x: <input style='width:50px' type='text' class='angularvelocityx shapeData " + shapeName + "'><br>" +
+				"y: <input style='width:50px' type='text' class='angularvelocityy shapeData " + shapeName + "'><br>" +
+				"z: <input style='width:50px' type='text' class='angularvelocityz shapeData " + shapeName + "'><br>";
+			}
+			
+			html += "speed: <input style='width:50px' type='text' class='angularvelocityspeed shapeData " + shapeName + "'><br><br>" +
 			"<input type='button' class='removeShape' value='Remove Shape'>" +
 			"<input type='button' value='Add Duplicate'>" +
 			"</div>" + 
 			
-			"</div></div>");
+			"</div></div>";
+			
+		$('#shapesAccordion').append(html);
+		
 		
 		$("#shapesAccordion :input:not(:button)").spinner({
 			step: 0.001,
@@ -153,7 +176,7 @@ $(function() {
 			var zy = _getShapeAngularInertiaZY(index);
 			var zz = _getShapeAngularInertiaZZ(index);
 			
-			var table = "<table class='matrix'>" + 
+			var table = "Angular Inertia: <br><table class='matrix'>" + 
 				"<tr>" + 
 					"<td>" + xx + "</td>" + 
 					"<td>" + xy + "</td>" + 
@@ -233,7 +256,8 @@ $(function() {
 		   $(this).siblings('input').change();
 		});
 		
-		$(".tabs").tabs();
+		$(".tabs").tabs().addClass( "ui-tabs-vertical ui-helper-clearfix" );
+		$(".tabs li").removeClass( "ui-corner-top" ).addClass( "ui-corner-left" );
 		
 		$('#shapesAccordion').accordion("refresh");
 			
@@ -297,6 +321,7 @@ $(function() {
 	$("#addIcoBtn").click(function() {
 		_AddIcosahedronOnClick();
 		addShape();
+		addShape(2); //Both the tetra and Icosahedron are added
 	});
 	
 	$("#addCircleBtn").click(function() {
@@ -328,47 +353,6 @@ $(function() {
 		_AddPolygonOnClick(numSides);
 		addShape();
 	});
-	
-	$("#impulseContinueBtn").click(function() {
-		_continueImpulseOnClick();
-	});
-	
-	$("#impulseRestartBtn").click(function() {
-		//_restartImpulseOnClick();
-		//TODO handle restart on the client side
-	});
-	
-	// $("#lookDownXaxisBtn").click(function() {
-		// _lookDownXaxisOnClick();
-	// });
-	
-	// $("#lookDownYaxisBtn").click(function() {
-		// _lookDownYaxisOnClick();
-	// });
-	
-	// $("#lookDownZaxisBtn").click(function() {
-		// _lookDownZaxisOnClick();
-	// });
-	
-	// $("#toggleXYplaneBtn").click(function () {
-		// _showXYPlaneOnClick();
-	// });
-	
-	// $("#toggleXZplaneBtn").click(function () {
-		// _showXZPlaneOnClick();
-	// });
-	
-	// $("#toggleYZplaneBtn").click(function () {
-		// _showYZPlaneOnClick();
-	// });
-	
-	// $("#toggleImpulseBtn").click(function() {
-		// _toggleImpulseBtnOnClick();
-	// });
-	
-	// $("#toggleVelocityBtn").click(function() {
-		// _toggleVelocityBtnOnClick();
-	// });
 	
 	$("#meshFileUpload").change(function() {
 		if(this.files != null && this.files.length > 0){
@@ -455,18 +439,7 @@ $(function() {
 	
 	$("#sceneShapesShowBtn").click(function() {
 		
-		$.when($("#sceneShapesShowBtnDiv").hide("slide", { direction: "right" }, 700)).then(function() {
-			sceneShapesOpen = true;
-			
-			$("#rightSidePanel").show();
-			window.dispatchEvent(new Event('resize'));
-			var toGrow = $("#rightSidePanel").width();
-			$("#rightSidePanel").width(0);
-			
-			$("#rightSidePanel").animate( {
-				width: toGrow
-			}, { duration: 2000, queue: false });
-		});
+		showSceneShapes();
 		
 		
 		
@@ -642,6 +615,9 @@ var sceneShapesOpen = true;
  var showVelocityGraph = false;
  var isImpulseMode = false;
  
+ var impulsePts = [];
+ var velocityPts = [];
+ 
  function toggleImpulseControls() {
 	if(!isImpulseMode) {
         //$('#impulseControls').hide();//"slide", { direction: "right" }, 1000);
@@ -684,8 +660,110 @@ var sceneShapesOpen = true;
 		//$('#impulseControls').width($('#canvas').width());
 		//console.log("IC width: " + $('#impulseControls').width());
 		
+		velocityPts = [];
+		while(_isMoreVelocityPts()){
+			velocityPts.push(_getNextVelocityPtX());
+			velocityPts.push(_getNextVelocityPtY());
+			velocityPts.push(_getNextVelocityPtZ());
+		}
+		
+		impulsePts = [];
+		while(_isMoreImpulsePts()){
+			impulsePts.push(_getNextImpulsePtX());
+			impulsePts.push(_getNextImpulsePtY());
+			impulsePts.push(_getNextImpulsePtZ());
+		}
+		
+		var v1EndX = round3(_getImpactResultsV1endX());
+		var v1EndY = round3(_getImpactResultsV1endY());
+		var v1EndZ = round3(_getImpactResultsV1endZ());
+	
+		var v2EndX = round3(_getImpactResultsV2endX());
+		var v2EndY = round3(_getImpactResultsV2endY());
+		var v2EndZ = round3(_getImpactResultsV2endZ());
+		
+		var w1EndX = round3(_getImpactResultsW1endX());
+		var w1EndY = round3(_getImpactResultsW1endY());
+		var w1EndZ = round3(_getImpactResultsW1endZ());
+		
+		var w2EndX = round3(_getImpactResultsW2endX());
+		var w2EndY = round3(_getImpactResultsW2endY());
+		var w2EndZ = round3(_getImpactResultsW2endZ());
+		
+		var endOfSliding = _getImpactResultsEndOfSliding();
+		var endOfCompres = _getImpactResultsEndOfCompression();
+		
+		var IendX = round3(_getImpactResultsIendX());
+		var IendY = round3(_getImpactResultsIendY());
+		var IendZ = round3(_getImpactResultsIendZ());
+		
+		
+		//TODO if 2D don't output z's
+		var html = "<h4 id='impactVisualizations'>A Collision Occurred</h4>" + 
+			"<div id='graphsContainer' height='400px'>" + 
+				"<p class='graphLabel'>Impulse Accumulation</p>" + 
+				"<div id='graph1'></div><br><br>" + 
+				
+				"<p class='graphLabel'>Sliding Velocity Curve (Hodograph)</p>" +
+				"<div id='graph2'></div>" +
+				
+				"<p>Total Impulse: <br>" + 
+				"(" + IendX + ", " + IendY + ", " + IendZ + ")<br>" + 
+				
+				"<p>End of Sliding at: " + endOfSliding + "</p><br>" +
+				"<p>End of Compression at: " + endOfCompres + "</p>" +
+				
+				"<p>Post impact velocities: <br>" + 
+				"(" + v1EndX + ", " + v1EndY + ", " + v1EndZ + ")<br>" + 
+				"(" + v2EndX + ", " + v2EndY + ", " + v2EndZ + ")<br>" + 
+				
+				"<p>Post impact angular velocities: <br>" + 
+				"(" + w1EndX + ", " + w1EndY + ", " + w1EndZ + ")<br>" + 
+				"(" + w2EndX + ", " + w2EndY + ", " + w2EndZ + ")<br><br>" + 
+				
+				"<input type='button' class='ui-button ui-widget ui-corner-all' id='impulseContinueBtn' value='Continue'>" +
+				"<input type='button' class='ui-button ui-widget ui-corner-all' id='impulseRestartBtn' value='Restart'>" +
+			"</div>";
+		
+		var accord = $('#shapesAccordion');
+		accord.append(html);
+		accord.accordion("refresh");
+		// $("#rightSidePanel").attr('height', 400);
+		// accord.attr('height', 400);
+		
+		$("#impulseContinueBtn").click(function() {
+			_continueImpulseOnClick();
+			$("#graphsContainer").remove();
+			$("#impactVisualizations").remove();
+		});
+		
+		$("#impulseRestartBtn").click(function() {
+			$("#graph1").empty();
+			$("#graph2").empty();
+			drawVisualizations(impulsePts, velocityPts);
+		});
+		
+		var showGraph = function() {
+			var indexToOpen = accord.children('div').length - 1;
+			accord.accordion('option', 'active', indexToOpen);
+			drawVisualizations(impulsePts, velocityPts);
+		};
+		
+		if(!sceneShapesOpen){
+			showSceneShapes(showGraph);
+			//If not already open, need to wait til it's on screen
+			// before drawing graphs so the height isn't still 0
+			
+			//TODO ^ not working
+		}
+		else {
+			showGraph();
+		}
+		
+		
+		/*
 		//12/16 vis.js 
-		drawVisualizations();
+		drawVisualizations(impulsePts, velocityPts);
 		if(!sceneShapesOpen){
 			$("#sceneShapesDiv").hide();
 			$("#graphsDiv").show();//"slide", { direction: "right" }, 1000);
@@ -701,9 +779,29 @@ var sceneShapesOpen = true;
 			
 			//TODO outuput v1end, v2end, w1end, w2end, Iend, EOC, EOS
 		}
+		*/
 		
 	}
  }
+ 
+ function round3(decimal) {
+	 return Math.round(decimal * 1000) / 1000;
+ }
+ 
+ function showSceneShapes(callback) {
+	$.when($("#sceneShapesShowBtnDiv").hide("slide", { direction: "right" }, 700)).then(function() {
+		sceneShapesOpen = true;
+		
+		$("#rightSidePanel").show();
+		window.dispatchEvent(new Event('resize'));
+		var toGrow = $("#rightSidePanel").width();
+		$("#rightSidePanel").width(0);
+		
+		$.when($("#rightSidePanel").animate( {
+			width: toGrow
+		}, { duration: 2000, queue: false })).then(callback);
+	});
+}
  
  function checkIfShouldShowGraphs(){
 	 if(!showImpulseGraph && !showVelocityGraph){
@@ -725,17 +823,31 @@ var sceneShapesOpen = true;
 	}	
  }
  
+ var using2D = false;
+ 
  //Toggles between 2D/3D interface mode
  function initDimension(simMode){
 	 if(simMode === '3D'){
 		_use2DShapes(false);
 		$("#2DaddShapeMenu").hide();
 		$("#3DaddShapeMenu").show();
+		
+		$("#cameraDomToHide").show();
+		
+		$("#angularVelocity").show();
+		
+		using2D = false;
 	 }
 	 else {
 		_use2DShapes(true);
 		$("#2DaddShapeMenu").show();
 		$("#3DaddShapeMenu").hide();
+		
+		$("#cameraDomToHide").hide();
+		
+		$("#angularVelocity").hide();
+		
+		using2D = true;
 	 }
  }
  
