@@ -9,13 +9,9 @@
 
 const float SQ_EPSILON = 0.001f;
 
-float PI = glm::pi<float>();
-float PI_OVER_2 = PI / 2.0f;
-float PI_OVER_4 = PI_OVER_2 / 2.0f;
-
-bool APPROX = false;
-
-bool print = false;
+//float PI = glm::pi<float>();
+//float PI_OVER_2 = PI / 2.0f;
+//float PI_OVER_4 = PI_OVER_2 / 2.0f;
 
 struct ParamPoint {
 	float u;
@@ -104,7 +100,26 @@ struct ParamPoint {
 // Vertex generation adapted from: http://www.gamedev.net/page/resources/_/technical/opengl/superquadric-ellipsoids-and-toroids-opengl-lig-r1172
 class Superquadric : public Shape {
 
+	static const bool print = false;
+
 public:
+
+	virtual bool DispatchCollisionDetection(Shape *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
+		std::cout << "SQ DD 1" << std::endl;
+		return other->DispatchCollisionDetection(this, closestPt1, closestPt2, pp1, pp2);
+	}
+
+	virtual bool DispatchCollisionDetection(Superquadric *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
+		std::cout << "SQ DD 2" << std::endl;
+		return CollisionDetector::Detect(*this, *other, closestPt1, closestPt2, pp1, pp2);
+		//other.DispatchCollisionDetection(*this);
+	}
+
+	virtual bool DispatchCollisionDetection(ShapeSeparatingAxis *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
+		std::cout << "SQ DD 3" << std::endl;
+		return CollisionDetector::Detect(*this, *other, closestPt1, closestPt2, pp1, pp2);
+		//other.DispatchCollisionDetection(*this);
+	}
 
 	float a1, a2, a3;       		 /* Scaling factors for x, y, and z */
 									 //float alpha;      				 /* For generating toroids. This is the inner radius */
@@ -1033,16 +1048,16 @@ public:
 		glm::vec2 closestParams1Try(prev1.u, prev1.v);
 		glm::vec2 closestParams2Try(prev2.u, prev2.v);
 
-		glm::vec2 closestParamsTry1(prev1.u + PI_OVER_4, prev1.v);
-		glm::vec2 closestParamsTry2(prev1.u, prev1.v + PI_OVER_4);
-		glm::vec2 closestParamsTry3(prev1.u - PI_OVER_4, prev1.v);
-		glm::vec2 closestParamsTry4(prev1.u, prev1.v - PI_OVER_4);
+		glm::vec2 closestParamsTry1(prev1.u + MathUtils::PI_OVER_4, prev1.v);
+		glm::vec2 closestParamsTry2(prev1.u, prev1.v + MathUtils::PI_OVER_4);
+		glm::vec2 closestParamsTry3(prev1.u - MathUtils::PI_OVER_4, prev1.v);
+		glm::vec2 closestParamsTry4(prev1.u, prev1.v - MathUtils::PI_OVER_4);
 
 
-		glm::vec2 closestParamsTry11(prev2.u + PI_OVER_4, prev2.v);
-		glm::vec2 closestParamsTry22(prev2.u, prev2.v + PI_OVER_4);
-		glm::vec2 closestParamsTry33(prev2.u - PI_OVER_4, prev2.v);
-		glm::vec2 closestParamsTry44(prev2.u, prev2.v - PI_OVER_4);
+		glm::vec2 closestParamsTry11(prev2.u + MathUtils::PI_OVER_4, prev2.v);
+		glm::vec2 closestParamsTry22(prev2.u, prev2.v + MathUtils::PI_OVER_4);
+		glm::vec2 closestParamsTry33(prev2.u - MathUtils::PI_OVER_4, prev2.v);
+		glm::vec2 closestParamsTry44(prev2.u, prev2.v - MathUtils::PI_OVER_4);
 
 		std::vector<glm::vec2> s1;
 		std::vector<glm::vec2> s2;
@@ -1060,14 +1075,14 @@ public:
 		s2.push_back(closestParamsTry44);
 
 
-		glm::vec2 closestParamsTry5(prev1.u + PI_OVER_2, prev1.v);
-		glm::vec2 closestParamsTry6(prev1.u, prev1.v + PI_OVER_2);
-		glm::vec2 closestParamsTry7(prev1.u - PI_OVER_2, prev1.v);
-		glm::vec2 closestParamsTry8(prev1.u, prev1.v - PI_OVER_2);
-		glm::vec2 closestParamsTry55(prev2.u + PI_OVER_2, prev2.v);
-		glm::vec2 closestParamsTry66(prev2.u, prev2.v + PI_OVER_2);
-		glm::vec2 closestParamsTry77(prev2.u - PI_OVER_2, prev2.v);
-		glm::vec2 closestParamsTry88(prev2.u, prev2.v - PI_OVER_2);
+		glm::vec2 closestParamsTry5(prev1.u + MathUtils::PI_OVER_2, prev1.v);
+		glm::vec2 closestParamsTry6(prev1.u, prev1.v + MathUtils::PI_OVER_2);
+		glm::vec2 closestParamsTry7(prev1.u - MathUtils::PI_OVER_2, prev1.v);
+		glm::vec2 closestParamsTry8(prev1.u, prev1.v - MathUtils::PI_OVER_2);
+		glm::vec2 closestParamsTry55(prev2.u + MathUtils::PI_OVER_2, prev2.v);
+		glm::vec2 closestParamsTry66(prev2.u, prev2.v + MathUtils::PI_OVER_2);
+		glm::vec2 closestParamsTry77(prev2.u - MathUtils::PI_OVER_2, prev2.v);
+		glm::vec2 closestParamsTry88(prev2.u, prev2.v - MathUtils::PI_OVER_2);
 		s2.push_back(closestParamsTry55);
 		s2.push_back(closestParamsTry66);
 		s2.push_back(closestParamsTry77);
@@ -1119,18 +1134,18 @@ public:
 		if (print) {
 
 			ParamPoint actual1, actual2;
-			offset = PI / 5.0f;
+			offset = MathUtils::PI / 5.0f;
 			float accuracy = .01f;
 			float uStart1, uStart2, uEnd1, uEnd2, vStart1, vStart2, vEnd1, vEnd2;
-			uStart1 = -PI_OVER_2;
-			uEnd1 = PI_OVER_2;
-			vStart1 = -PI;
-			vEnd1 = PI;
+			uStart1 = -MathUtils::PI_OVER_2;
+			uEnd1 = MathUtils::PI_OVER_2;
+			vStart1 = -MathUtils::PI;
+			vEnd1 = MathUtils::PI;
 
-			uStart2 = -PI_OVER_2;
-			uEnd2 = PI_OVER_2;
-			vStart2 = -PI;
-			vEnd2 = PI;
+			uStart2 = -MathUtils::PI_OVER_2;
+			uEnd2 = MathUtils::PI_OVER_2;
+			vStart2 = -MathUtils::PI;
+			vEnd2 = MathUtils::PI;
 
 			ClosestPointBruteForce(sq1, sq2, actual1, actual2, uStart1, uStart2, uEnd1, uEnd2, vStart1, vStart2, vEnd1, vEnd2, offset, accuracy);
 
@@ -2228,7 +2243,7 @@ public:
 						}
 					}
 				}
-				else if (MathUtils::abs(xi[1]) < .05f || MathUtils::abs(xi[1] - PI) < .05f) {
+				else if (MathUtils::abs(xi[1]) < .05f || MathUtils::abs(xi[1] - MathUtils::PI) < .05f) {
 					//v is approximately 0 or pi
 					if (!sq1vLeft1) {
 						//Try adjusting to the left side of the line v1= 0 || PI:
@@ -2300,7 +2315,7 @@ public:
 						}
 					}
 				}
-				else if (MathUtils::abs(xi[1] - PI_OVER_2) < .05f || MathUtils::abs(xi[1] + PI_OVER_2) < .05f) {
+				else if (MathUtils::abs(xi[1] - MathUtils::PI_OVER_2) < .05f || MathUtils::abs(xi[1] + MathUtils::PI_OVER_2) < .05f) {
 					//v is approximately pi/2 or -pi/2
 					if (!sq1vLeft2) {
 						//Try adjusting to the left side of the line v1 = +/- PI/2:
@@ -2372,7 +2387,7 @@ public:
 						}
 					}
 				}
-				else if (MathUtils::abs(xi[1] - PI_OVER_4) < .05f || MathUtils::abs(xi[1] + PI_OVER_4) < .05f) {
+				else if (MathUtils::abs(xi[1] - MathUtils::PI_OVER_4) < .05f || MathUtils::abs(xi[1] + MathUtils::PI_OVER_4) < .05f) {
 					// v is approximately +/- PI/4 
 					if (!sq1v4Left) {
 						//Try adjusting to the left side of the line:
@@ -2450,7 +2465,7 @@ public:
 						}
 					}
 				}
-				else if (MathUtils::abs(xi[0] - PI_OVER_4) < .05f || MathUtils::abs(xi[0] + PI_OVER_4) < .05f) {
+				else if (MathUtils::abs(xi[0] - MathUtils::PI_OVER_4) < .05f || MathUtils::abs(xi[0] + MathUtils::PI_OVER_4) < .05f) {
 
 					// u is approximately +/- PI/4 
 
@@ -2632,7 +2647,7 @@ public:
 						}
 					}
 				}
-				else if (MathUtils::abs(xi[3]) < .05f || MathUtils::abs(xi[3] - PI) < .05f) {
+				else if (MathUtils::abs(xi[3]) < .05f || MathUtils::abs(xi[3] - MathUtils::PI) < .05f) {
 					//v is approximately 0 or pi
 					if (!sq1vLeft1) {
 						//Try adjusting to the left side of the line v1= 0 || PI:
@@ -2705,7 +2720,7 @@ public:
 						}
 					}
 				}
-				else if (MathUtils::abs(xi[3] - PI_OVER_2) < .05f || MathUtils::abs(xi[3] + PI_OVER_2) < .05f) {
+				else if (MathUtils::abs(xi[3] - MathUtils::PI_OVER_2) < .05f || MathUtils::abs(xi[3] + MathUtils::PI_OVER_2) < .05f) {
 					//v is approximately pi/2 or -pi/2
 					if (!sq2vLeft2) {
 						//Try adjusting to the left side of the line v1 = +/- PI/2:

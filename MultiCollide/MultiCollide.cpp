@@ -3438,7 +3438,8 @@ bool checkForCollision(int shapeI, int shapeJ, ParamPoint &ppI, ParamPoint &ppJ)
 	if (BoundingSphereTest(*shapes[i], *shapes[j])) {
 
 		glm::vec3 closestPt1, closestPt2;
-		return CollisionDetector::Detect(shapes[i], shapes[j], closestPt1, closestPt2, ppI, ppJ);
+		//return CollisionDetector::Detect(shapes[i], shapes[j], closestPt1, closestPt2, ppI, ppJ);
+		return shapes[i]->DispatchCollisionDetection(shapes[j], closestPt1, closestPt2, ppI, ppJ);
 
 		//if (shapes[i]->name.find("Tetra") != shapes[i]->name.npos 
 		//	|| shapes[i]->name.find("Ico") != shapes[i]->name.npos) {

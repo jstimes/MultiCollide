@@ -4,7 +4,13 @@
 #include <vector>
 
 #include "ShapeUtils.h" // includes MathUtils, GL calls, and functions for shapes
+#include "CollisionDetector.h"
 #include "Arrow.h"
+
+class CollisionDetector;
+class Superquadric;
+class ShapeSeparatingAxis;
+struct ParamPoint;
 
 
 //An abstract class that defines common properties and behaviors among all
@@ -135,5 +141,22 @@ public:
 		if (!ShapeUtils::isZeroVec(axis)) {
 			Arrow::Draw(shader, 1.5f * boundingSphereRadius, 1.0f, axis, translation);
 		}
+	}
+
+	virtual bool DispatchCollisionDetection(Shape *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
+		std::cout << "DD 1" << std::endl;
+		return other->DispatchCollisionDetection(this, closestPt1, closestPt2, pp1, pp2);
+	}
+
+	virtual bool DispatchCollisionDetection(Superquadric *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
+		std::cout << "DD 2" << std::endl;
+		return CollisionDetector::Detect(*this, *other, closestPt1, closestPt2, pp1, pp2);
+		//other.DispatchCollisionDetection(*this);
+	}
+
+	virtual bool DispatchCollisionDetection(ShapeSeparatingAxis *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
+		std::cout << "DD 3" << std::endl;
+		return CollisionDetector::Detect(*this, *other, closestPt1, closestPt2, pp1, pp2);
+		//other.DispatchCollisionDetection(*this);
 	}
 };

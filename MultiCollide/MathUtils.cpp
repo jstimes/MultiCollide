@@ -7,6 +7,8 @@ HashMap MathUtils::sinMap = HashMap();
 const glm::mat4 MathUtils::I4 = glm::mat4();
 const float MathUtils::PI = glm::pi<float>();
 const float MathUtils::twoPI = glm::pi<float>() * 2.0f;
+const float MathUtils::PI_OVER_2 = glm::pi<float>() / 2.0f;
+const float MathUtils::PI_OVER_4 = glm::pi<float>() / 4.0f;
 
 float MathUtils::cos(float x) {
 	return cosf(x);

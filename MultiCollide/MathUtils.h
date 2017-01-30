@@ -28,6 +28,8 @@ public:
 
 	static const float PI;
 	static const float twoPI;
+	static const float PI_OVER_2;
+	static const float PI_OVER_4;
 
 	static const glm::mat4 I4;
 
