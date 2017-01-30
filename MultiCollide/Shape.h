@@ -25,6 +25,8 @@ public:
 	//The initial position. Should only equal translation at time=0
 	glm::vec3 centroid;  
 
+	glm::mat3 angularInertia;
+
 	glm::vec3 translation;
 
 	glm::vec3 rotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
@@ -46,6 +48,10 @@ public:
 
 	void applyRotation(glm::vec3 axis, float angle) {
 		glm::mat4 newRot = glm::rotate(glm::mat4(), angle, axis);
+
+		/*std::cout << "Rotation Update:" << std::endl;
+		MathUtils::printMat(newRot);*/
+
 		glm::mat4 current = this->getRotationMatrix();
 		current = newRot * current;
 		glm::quat curQuat = glm::quat_cast(current);
@@ -59,7 +65,8 @@ public:
 
 	glm::vec3 curVelocity;
 
-	glm::vec3 scaling = glm::vec3(1.0f, 1.0f, 1.0f);
+	//glm::vec3 scaling = glm::vec3(1.0f, 1.0f, 1.0f);
+	float scaling = 1.0f;
 
 	float time;
 
@@ -72,12 +79,14 @@ public:
 	
 	//Collision Detection:
 
+	bool is2D = false;
+
 	bool UsingBoundingSphere = true;
 
 	float boundingBox[6];
 
-	//Used to give padding to bounding sphere in so collision is not
-	// detected to late
+	//Used to give padding to bounding sphere so collision is not
+	// detected to0 late
 	const float BoundingSphereBuffer = .0075f;
 
 	//Every subclass should set this by examining the furthest point from the 
@@ -87,6 +96,7 @@ public:
 
 
 	//Styling:
+	bool useCustomColors = false;
 
 	glm::vec3 defaultColor = glm::vec3(1.0f, 0.5f, 0.31f);
 
@@ -101,7 +111,7 @@ public:
 
 	//Generate buffers and configure shader in-attributes (position, normal)
 	virtual void InitVAOandVBO(Shader &shader) = 0;
-
+	
 	//Ensure VAO is bound before the draw call
 	virtual void Draw(Shader &shader) = 0;
 
@@ -109,35 +119,21 @@ public:
 	virtual ~Shape() = 0 { }
 
 
-	//Arrow velocityArrow;
 
 	virtual void DrawInitialVelocity(Shader &shader) {
-		//this->velocityArrow.updatePoints(centroid, centroid + curVelocity);
-		Arrow::Draw(shader, glm::l2Norm(curVelocity), 1.0f, curVelocity, centroid);
+		Arrow::Draw(shader, glm::length(curVelocity), 2.0f, curVelocity, centroid);
 	}
-
-	//Arrow angularVelocityArrow;
 
 	virtual void DrawInitialAngularVelocity(Shader &shader) {
-		/*glm::vec3 axis = centroid + glm::normalize(angularVelocityAxis) * 1.3f * boundingSphereRadius;
-		this->angularVelocityArrow.updatePoints(centroid, axis);
-		this->angularVelocityArrow.Draw(shader);*/
-
-		Arrow::Draw(shader, 1.3f * boundingSphereRadius, 1.0f, angularVelocityAxis, centroid);
+		Arrow::Draw(shader, 1.3f * boundingSphereRadius, 2.0f, angularVelocityAxis, translation);
 	}
 
-	//Arrow rotationAxisArrow = Arrow(centroid, angularVelocityAxis);
-
 	virtual void DrawRotationAxis(Shader &shader) {
-		glm::quat q = glm::angleAxis(rotationAngle, rotationAxis);//glm::quat_cast(rotation);
+		glm::quat q = glm::angleAxis(rotationAngle, rotationAxis);
 		glm::vec3 axis = glm::vec3(q.x, q.y, q.z);
 		
 		if (!ShapeUtils::isZeroVec(axis)) {
-			/*axis = glm::normalize(axis) * 1.5f * boundingSphereRadius;
-			this->rotationAxisArrow.updatePoints(centroid, centroid + axis);
-			this->rotationAxisArrow.Draw(shader);*/
-
-			Arrow::Draw(shader, 1.5f * boundingSphereRadius, .5f, axis, centroid);
+			Arrow::Draw(shader, 1.5f * boundingSphereRadius, 1.0f, axis, translation);
 		}
 	}
 };

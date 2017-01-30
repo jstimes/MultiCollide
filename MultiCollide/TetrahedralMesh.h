@@ -5,11 +5,11 @@
 #include <fstream>
 #include <sstream>
 
-#include "Shape.h"
+#include "ShapeSeparatingAxis.h"
 
 class Tetrahedron {
 public:
-	
+
 	glm::vec3 a;
 	glm::vec3 b;
 	glm::vec3 c;
@@ -51,13 +51,14 @@ public:
 
 };
 
-class TetrahedralMesh : public Shape {
+//Uses bounding box for collision detection
+class TetrahedralMesh : public ShapeSeparatingAxis {
 public:
 	int TetrahedraCount;
 	std::vector<Tetrahedron> Tetrahedra;
 	std::vector<GLfloat> vertices;
-	glm::vec3 centroid;
-	glm::mat3 AngularInertia;
+
+	//glm::mat3 AngularInertia;
 	float Volume;
 	float Mass;
 	float Density;
@@ -91,7 +92,7 @@ public:
 
 		shader.Use();
 		glUniformMatrix4fv(shader.getUniform("model"), 1, GL_FALSE, glm::value_ptr(this->model));
-		glUniform3f(shader.getUniform("objectColor"), objectColor.x, objectColor.y, objectColor.z);
+		glUniform4f(shader.getUniform("objectColor"), objectColor.x, objectColor.y, objectColor.z, 1.0f);
 		glBindVertexArray(this->VAO);
 		glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 6);
@@ -114,12 +115,46 @@ public:
 		for (int i = 0; i < TetrahedraCount; i++) {
 			Tetrahedron t = this->Tetrahedra[i];
 
+			testTetrahedronPtsForBoundingBox(t);
+
 			//TODO how to ensure normal is correct direction
-			ShapeUtils::addTriangleToVector(t.a, t.b, t.c, ShapeUtils::getNormalOfTriangle(t.a, t.b, t.c), this->vertices);
-			ShapeUtils::addTriangleToVector(t.a, t.b, t.d, ShapeUtils::getNormalOfTriangle(t.a, t.b, t.d), this->vertices);
-			ShapeUtils::addTriangleToVector(t.d, t.b, t.c, ShapeUtils::getNormalOfTriangle(t.d, t.b, t.c), this->vertices);
-			ShapeUtils::addTriangleToVector(t.a, t.d, t.c, ShapeUtils::getNormalOfTriangle(t.a, t.d, t.c), this->vertices);
+			glm::vec3 n1 = ShapeUtils::getNormalOfTriangle(t.a, t.b, t.c);
+			glm::vec3 n2 = ShapeUtils::getNormalOfTriangle(t.a, t.b, t.d);
+			glm::vec3 n3 = ShapeUtils::getNormalOfTriangle(t.d, t.b, t.c);
+			glm::vec3 n4 = ShapeUtils::getNormalOfTriangle(t.a, t.d, t.c);
+
+			ShapeUtils::addTriangleToVector(t.a, t.b, t.c, n1, this->vertices);
+			ShapeUtils::addTriangleToVector(t.a, t.b, t.d, n2, this->vertices);
+			ShapeUtils::addTriangleToVector(t.d, t.b, t.c, n3, this->vertices);
+			ShapeUtils::addTriangleToVector(t.a, t.d, t.c, n4, this->vertices);
 		}
+
+		glm::vec3 c1(boundingBox[1], boundingBox[2], boundingBox[5]);
+		glm::vec3 c2(boundingBox[1], boundingBox[2], boundingBox[4]);
+		glm::vec3 c3(boundingBox[0], boundingBox[2], boundingBox[4]);
+		glm::vec3 c4(boundingBox[0], boundingBox[2], boundingBox[5]);
+
+		glm::vec3 c5(boundingBox[1], boundingBox[3], boundingBox[5]);
+		glm::vec3 c6(boundingBox[1], boundingBox[3], boundingBox[4]);
+		glm::vec3 c7(boundingBox[0], boundingBox[3], boundingBox[4]);
+		glm::vec3 c8(boundingBox[0], boundingBox[3], boundingBox[5]);
+
+		corners.push_back(c1);
+		corners.push_back(c2);
+		corners.push_back(c3);
+		corners.push_back(c4);
+		corners.push_back(c5);
+		corners.push_back(c6);
+		corners.push_back(c7);
+		corners.push_back(c8);
+		
+		glm::vec3 n1(1.0f, 0.0f, 0.0f);
+		glm::vec3 n2(0.0f, 1.0f, 0.0f);
+		glm::vec3 n3(0.0f, 0.0f, 1.0f);
+
+		normals.push_back(n1);
+		normals.push_back(n2);
+		normals.push_back(n3);
 	}
 
 	void testTetrahedronPtsForBoundingBox(Tetrahedron &t) {
@@ -200,7 +235,7 @@ public:
 			computeTetrahedronAngularInertia(*it, this->centroid);
 			meshInertia += it->angularInertia;
 		}
-		this->AngularInertia = meshInertia;
+		this->angularInertia = meshInertia;
 	}
 
 	void Translate(glm::vec3 trans) {
@@ -228,7 +263,7 @@ public:
 		else {
 			std::cout << "Failed opening " << filename << std::endl;
 		}
-		
+
 		delete meshfile;
 	}
 
@@ -368,4 +403,4 @@ public:
 		return elems;
 	}
 
-}; 
+};

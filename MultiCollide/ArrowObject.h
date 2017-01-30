@@ -7,6 +7,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "ShapeUtils.h"
+#include "ShapeShader.h"
 
 //Represents an arrow starting at origin that goes to (1, 0, 0)
 //Changes to shape & size are controlled by matrices passed into Draw method
@@ -16,121 +17,42 @@ class ArrowObject {
 
 private:
 
-	GLuint headVAO, headVBO;
+	GLuint coneVAO, coneVBO;
 	GLuint lineVAO, lineVBO;
 
-	std::vector<GLfloat> headVertices;
+	std::vector<GLfloat> coneVertices;
 	std::vector<GLfloat> lineVertices;
 
-	void InitHeadVertices() {
-		glm::vec3 base1, base2, base3, tip;
 
-		glm::mat4 rotation;
-		glm::vec3 axis = glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-		float angle = acos(glm::dot(glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)), glm::normalize(glm::vec3(1.0f, 0.0f, 0.0f))));
-		rotation = glm::rotate(glm::mat4(), angle, axis);
+	void InitConeVertices() {
+		int numSegments = 36;
 
-		//Orient tetrahedron so that 'tip' has just an x component:
-		base1 = glm::vec3(rotation * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f));
-		base2 = glm::vec3(rotation * glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f));
-		base3 = glm::vec3(rotation * glm::vec4(1.0f, -1.0f, -1.0f, 1.0f));
-		tip = glm::vec3(rotation * glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		float radius = .45f;
+		float height = 1.0f;
 
-		glm::vec3 base123norm = glm::normalize(glm::cross(base3 - base1, base2 - base1));
-		glm::vec3 base12tipnorm = glm::normalize(glm::cross(base2 - base1, tip - base1));
-		glm::vec3 base13tipnorm = glm::normalize(glm::cross(base1 - base3, tip - base3));
-		glm::vec3 base23tipnorm = glm::normalize(glm::cross(base3 - base2, tip - base2));
+		float offset = (MathUtils::twoPI) / numSegments;
+		float baseHeight = -(height / 2.0f);
 
+		glm::vec3 circleOrigin(0.0f, 0.0f, 0.0f);
+		glm::vec3 tip(height, 0.0f, 0.0f);
+		glm::vec3 circleNorm(-1.0f, 0.0f, 0.0f);
 
-		headVertices.push_back(base1.x);
-		headVertices.push_back(base1.y);
-		headVertices.push_back(base1.z);
-		headVertices.push_back(base123norm.x);
-		headVertices.push_back(base123norm.y);
-		headVertices.push_back(base123norm.z);
+		for (int i = 0; i < numSegments; i++) {
 
-		headVertices.push_back(base2.x);
-		headVertices.push_back(base2.y);
-		headVertices.push_back(base2.z);
-		headVertices.push_back(base123norm.x);
-		headVertices.push_back(base123norm.y);
-		headVertices.push_back(base123norm.z);
+			float rads = offset * i;
+			glm::vec3 a(0.0f, MathUtils::sin(rads), MathUtils::cos(rads));
 
-		headVertices.push_back(base3.x);
-		headVertices.push_back(base3.y);
-		headVertices.push_back(base3.z);
-		headVertices.push_back(base123norm.x);
-		headVertices.push_back(base123norm.y);
-		headVertices.push_back(base123norm.z);
+			rads += offset;
+			glm::vec3 b(0.0f, MathUtils::sin(rads), MathUtils::cos(rads));
 
+			glm::vec3 norm = ShapeUtils::getNormalOfTriangle(a, tip, b);
 
+			a *= radius;
+			b *= radius;
 
-		headVertices.push_back(base1.x);
-		headVertices.push_back(base1.y);
-		headVertices.push_back(base1.z);
-		headVertices.push_back(base12tipnorm.x);
-		headVertices.push_back(base12tipnorm.y);
-		headVertices.push_back(base12tipnorm.z);
-
-		headVertices.push_back(base2.x);
-		headVertices.push_back(base2.y);
-		headVertices.push_back(base2.z);
-		headVertices.push_back(base12tipnorm.x);
-		headVertices.push_back(base12tipnorm.y);
-		headVertices.push_back(base12tipnorm.z);
-
-		headVertices.push_back(tip.x);
-		headVertices.push_back(tip.y);
-		headVertices.push_back(tip.z);
-		headVertices.push_back(base12tipnorm.x);
-		headVertices.push_back(base12tipnorm.y);
-		headVertices.push_back(base12tipnorm.z);
-
-
-
-		headVertices.push_back(base1.x);
-		headVertices.push_back(base1.y);
-		headVertices.push_back(base1.z);
-		headVertices.push_back(base13tipnorm.x);
-		headVertices.push_back(base13tipnorm.y);
-		headVertices.push_back(base13tipnorm.z);
-
-		headVertices.push_back(base3.x);
-		headVertices.push_back(base3.y);
-		headVertices.push_back(base3.z);
-		headVertices.push_back(base13tipnorm.x);
-		headVertices.push_back(base13tipnorm.y);
-		headVertices.push_back(base13tipnorm.z);
-
-		headVertices.push_back(tip.x);
-		headVertices.push_back(tip.y);
-		headVertices.push_back(tip.z);
-		headVertices.push_back(base13tipnorm.x);
-		headVertices.push_back(base13tipnorm.y);
-		headVertices.push_back(base13tipnorm.z);
-
-
-
-		headVertices.push_back(base2.x);
-		headVertices.push_back(base2.y);
-		headVertices.push_back(base2.z);
-		headVertices.push_back(base23tipnorm.x);
-		headVertices.push_back(base23tipnorm.y);
-		headVertices.push_back(base23tipnorm.z);
-
-		headVertices.push_back(base3.x);
-		headVertices.push_back(base3.y);
-		headVertices.push_back(base3.z);
-		headVertices.push_back(base23tipnorm.x);
-		headVertices.push_back(base23tipnorm.y);
-		headVertices.push_back(base23tipnorm.z);
-
-		headVertices.push_back(tip.x);
-		headVertices.push_back(tip.y);
-		headVertices.push_back(tip.z);
-		headVertices.push_back(base23tipnorm.x);
-		headVertices.push_back(base23tipnorm.y);
-		headVertices.push_back(base23tipnorm.z);
+			ShapeUtils::addTriangleToVector(a, tip, b, norm, coneVertices);
+			ShapeUtils::addTriangleToVector(circleOrigin, a, b, circleNorm, coneVertices);
+		}
 	}
 
 	//In model space, line should just be from origin to (1, 0, 0)
@@ -156,17 +78,17 @@ public:
 
 	ArrowObject() {
 		InitLineVertices();
-		InitHeadVertices();
+		InitConeVertices();
 		InitBuffers();
 	}
 
 	void InitBuffers() {
-
-		glGenVertexArrays(1, &this->headVAO);
-		glGenBuffers(1, &this->headVBO);
-		glBindVertexArray(this->headVAO);
-		glBindBuffer(GL_ARRAY_BUFFER, this->headVBO);
-		glBufferData(GL_ARRAY_BUFFER, this->headVertices.size() * sizeof(GLfloat), &this->headVertices[0], GL_STATIC_DRAW);
+		
+		glGenVertexArrays(1, &this->coneVAO);
+		glGenBuffers(1, &this->coneVBO);
+		glBindVertexArray(this->coneVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, this->coneVBO);
+		glBufferData(GL_ARRAY_BUFFER, this->coneVertices.size() * sizeof(GLfloat), &this->coneVertices[0], GL_STATIC_DRAW);
 
 		// Position attribute
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
@@ -176,7 +98,7 @@ public:
 		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 		glEnableVertexAttribArray(1);
 		glBindVertexArray(0); // Unbind VAO
-
+		
 
 		glGenVertexArrays(1, &this->lineVAO);
 		glGenBuffers(1, &this->lineVBO);
@@ -195,21 +117,21 @@ public:
 	}
 
 	void Draw(Shader &shader, glm::mat4 headModel, glm::mat4 lineModel) {
-		glUniformMatrix4fv(shader.getUniform("model"), 1, GL_FALSE, glm::value_ptr(headModel));
-		glBindVertexArray(this->headVAO);
-		glDrawArrays(GL_TRIANGLES, 0, headVertices.size() / 6);
+		glUniformMatrix4fv(ShapeShader::getInstance().modelLoc, 1, GL_FALSE, glm::value_ptr(headModel));
+		
+		glBindVertexArray(this->coneVAO);
+		glDrawArrays(GL_TRIANGLES, 0, coneVertices.size() / 6);
 		glBindVertexArray(0);
 
-		glUniformMatrix4fv(shader.getUniform("model"), 1, GL_FALSE, glm::value_ptr(lineModel));
+		glUniformMatrix4fv(ShapeShader::getInstance().modelLoc, 1, GL_FALSE, glm::value_ptr(lineModel));
 		glBindVertexArray(this->lineVAO);
 		glDrawArrays(GL_LINES, 0, lineVertices.size() / 6);
 		glBindVertexArray(0);
 	}
 
 	~ArrowObject() {
-		std::cout << "ArrowObject deleted" << std::endl;
-		glDeleteBuffers(1, &this->headVAO);
-		glDeleteBuffers(1, &this->headVBO);
+		glDeleteBuffers(1, &this->coneVAO);
+		glDeleteBuffers(1, &this->coneVBO);
 
 		glDeleteBuffers(1, &this->lineVAO);
 		glDeleteBuffers(1, &this->lineVBO);

@@ -4,7 +4,6 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 // GLEW
 #define GLEW_STATIC
@@ -13,7 +12,7 @@
 #include "Shader.h"
 #include "Text.h"
 
-bool debug = false;
+//bool debug = false;
 
 class GLView {
 
@@ -71,8 +70,8 @@ public:
 
 		this->mColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-		if(debug)
-			std::cout << "View created" << std::endl;
+		//if(debug)
+		//	std::cout << "View created" << std::endl;
 	}
 
 	std::string GetText() {
@@ -218,7 +217,7 @@ public:
 
 		DeleteBuffers();
 
-		if(debug)
-			std::cout << "View destroyed" << std::endl;
+		//if(debug)
+		//	std::cout << "View destroyed" << std::endl;
 	}
 };

@@ -41,7 +41,7 @@ struct Primitive {
 
 		shader.Use();
 		glBindVertexArray(VAO);
-		glUniform3f(shader.getUniform("objectColor"), objectColor.x, objectColor.y, objectColor.z);
+		glUniform4f(shader.getUniform("objectColor"), objectColor.x, objectColor.y, objectColor.z, 1.0f);
 		glUniformMatrix4fv(shader.getUniform("model"), 1, false, glm::value_ptr(model));
 		glUniform3f(shader.getUniform("lightPos"), lightPos.x, lightPos.y, lightPos.z);
 

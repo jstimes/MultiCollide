@@ -3,6 +3,7 @@
 #pragma once
 
 #include <vector>
+#include "ShapeUtils.h"
 
 class Keyboard {
 
@@ -70,10 +71,23 @@ public:
 		return keyboard;
 	}
 
+	/*static bool getR(bool flip) {
+		static bool R = false;
+		if (flip) {
+			R = !R;
+			std::cout << "R is down" << std::endl;
+		}
+		return R;
+	}*/
+
 	static void Input(int glfwKey) {
 		Keyboard &keyboard = GetInstance();
 		char c = charForKey(glfwKey);
 		std::cout << c << std::endl;
+
+		/*if (c == 'R') {
+			getR(true);
+		}*/
 
 		if(c > 0){
 			for (std::vector<Listener*>::iterator it = keyboard.listeners.begin(); it != keyboard.listeners.end(); it++) {

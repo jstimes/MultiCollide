@@ -17,6 +17,6 @@ public:
 
 	//Draws an x-y-z frame scaled according to scaling (1 = no scaling), rotated according to rotation, 
 	// and translated to the point at translation
-	static void Draw(Shader &shader, glm::vec3 &translation, glm::mat4 &rotation, float scaling);
+	static void Draw(glm::vec3 &translation, const glm::mat4 &rotation, float scaling, bool use2D = false);
 
 };

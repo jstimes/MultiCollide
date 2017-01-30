@@ -1,5 +1,15 @@
 #include "ShapeUtils.h"
 
+
+void ShapeUtils::AddPoint(std::vector<GLfloat> &vector, glm::vec3 &pt, glm::vec3 &normal) {
+	vector.push_back(pt.x);
+	vector.push_back(pt.y);
+	vector.push_back(pt.z);
+	vector.push_back(normal.x);
+	vector.push_back(normal.y);
+	vector.push_back(normal.z);
+}
+
 void ShapeUtils::getCirclePoints(double radius, std::vector<GLdouble> &circleXpts, std::vector<GLdouble> &circleZpts, double ptOffset) {
 	const GLdouble TWO_PI = glm::pi<double>() * 2.0f;
 	GLdouble radInc = glm::pi<double>() / ptOffset;
@@ -11,9 +21,9 @@ void ShapeUtils::getCirclePoints(double radius, std::vector<GLdouble> &circleXpt
 }
 
 glm::vec3 ShapeUtils::getNormalOfTriangle(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3) {
-	glm::dvec3 normal;
-	glm::dvec3 V = p2 - p1;
-	glm::dvec3 W = p3 - p1;
+	glm::vec3 normal;
+	glm::vec3 V = p2 - p1;
+	glm::vec3 W = p3 - p1;
 	normal.x = (V.y * W.z) - (V.z * W.y);
 	normal.y = (V.z * W.z) - (V.x * W.z);
 	normal.z = (V.x * W.y) - (V.y * W.x);
@@ -43,25 +53,25 @@ void ShapeUtils::HouseholderOrthogonalization(glm::dvec3 n, glm::mat3 &H) {
 	H = identity - hTimesTranspose;
 }
 
-void ShapeUtils::addTriangleToVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 normal, std::vector<GLfloat> &vec) {
-	vec.push_back(p1.x);
-	vec.push_back(p1.y);
-	vec.push_back(p1.z);
-	vec.push_back(normal.x);
-	vec.push_back(normal.y);
-	vec.push_back(normal.z);
-
-	vec.push_back(p2.x);
-	vec.push_back(p2.y);
-	vec.push_back(p2.z);
-	vec.push_back(normal.x);
-	vec.push_back(normal.y);
-	vec.push_back(normal.z);
-
-	vec.push_back(p3.x);
-	vec.push_back(p3.y);
-	vec.push_back(p3.z);
-	vec.push_back(normal.x);
-	vec.push_back(normal.y);
-	vec.push_back(normal.z);
+void ShapeUtils::addTriangleToVector(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3, glm::vec3 &normal, std::vector<GLfloat> &vec) {
+	AddPoint(vec, p1, normal);
+	AddPoint(vec, p2, normal);
+	AddPoint(vec, p3, normal);
 }
+
+void ShapeUtils::addTriangleToVectorWithColor(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3, glm::vec3 &normal, glm::vec4 &color, std::vector<GLfloat> &vec) {
+	AddPoint(vec, p1, normal);
+	AddVec4(vec, color);
+	AddPoint(vec, p2, normal);
+	AddVec4(vec, color);
+	AddPoint(vec, p3, normal);
+	AddVec4(vec, color);
+}
+
+void ShapeUtils::AddVec4(std::vector<GLfloat> &arr, glm::vec4 &vec) {
+	arr.push_back(vec.x);
+	arr.push_back(vec.y);
+	arr.push_back(vec.z);
+	arr.push_back(vec.w);
+}
+

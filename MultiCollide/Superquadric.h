@@ -7,7 +7,7 @@
 #include "Quaternion.h"
 #include "Shape.h"
 
-const float SQ_EPSILON = 0.0001f;
+const float SQ_EPSILON = 0.001f;
 
 float PI = glm::pi<float>();
 float PI_OVER_2 = PI / 2.0f;
@@ -164,7 +164,7 @@ public:
 	virtual void Draw(Shader &shader) override {
 
 		glUniformMatrix4fv(shader.getUniform("model"), 1, GL_FALSE, glm::value_ptr(this->model));
-		glUniform3f(shader.getUniform("objectColor"), objectColor.x, objectColor.y, objectColor.z);
+		glUniform4f(shader.getUniform("objectColor"), objectColor.x, objectColor.y, objectColor.z, 1.0f);
 		glBindVertexArray(this->VAO);
 		glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 6);
@@ -187,8 +187,8 @@ public:
 		this->u2 = glm::pi<float>() / 2.0f;
 		this->v1 = -glm::pi<float>();
 		this->v2 = glm::pi<float>();
-		this->u_segs = 30;
-		this->v_segs = 30;
+		this->u_segs = 23;
+		this->v_segs = 23;
 	}
 
 	glm::mat3 getPointBasis(glm::vec3 localPt) {
@@ -208,16 +208,23 @@ public:
 
 #pragma region Derivatives
 
+	// (0, 0, 0) at u = +/- PI/2
 	glm::vec3 dSigmaDv(float u, float v) {
 		glm::vec3 out;
-		float cosvToTheE2, sinu, cosu;
+		float cosuToTheE1, sinv, cosv, cosu;
 
-		cosvToTheE2 = powf(MathUtils::cos(u), e1);
-		sinu = MathUtils::sin(v);
-		cosu = MathUtils::cos(v);
+		cosu = MathUtils::cos(u);
 
-		out.x = MathUtils::sgnf(cosu) * a1 * cosvToTheE2 * (-1.0f * e2 * powf(MathUtils::abs(cosu), e2 - 1.0f) * sinu);
-		out.y = MathUtils::sgnf(sinu) * a2 * cosvToTheE2 * (e2 * powf(MathUtils::abs(sinu), e2 - 1.0f) * cosu);
+		cosuToTheE1 = MathUtils::sgnf(cosu) * (MathUtils::abs(cosu), e1);
+		sinv = MathUtils::sin(v);
+		cosv = MathUtils::cos(v);
+
+		if (this->isSphere() || (e1 == 1.0f && e2 == 1.0f)) {
+			return glm::vec3(a1 * cosu *-sinv, a2 * cosu * cosv, 0.0f);
+		}
+
+		out.x = MathUtils::sgnf(cosv) * a1 * cosuToTheE1 * (-1.0f * e2 * powf(MathUtils::abs(cosv), e2 - 1.0f) * sinv);
+		out.y = MathUtils::sgnf(sinv) * a2 * cosuToTheE1 * (e2 * powf(MathUtils::abs(sinv), e2 - 1.0f) * cosv);
 		out.z = 0.0f;
 
 		return out;
@@ -225,34 +232,43 @@ public:
 
 	glm::vec3 dSigmaDu(float u, float v) {
 		glm::vec3 out;
-		float cosv, cosvToTheE2Minus1, sinv, end, sinu, cosu;
-		cosv = MathUtils::cos(u);
-		sinv = MathUtils::sin(u);
-		sinu = MathUtils::sin(v);
-		cosu = MathUtils::cos(v);
+		float cosv, cosuToTheE1Minus1, sinv, end, sinu, cosu;
+		cosu = MathUtils::cos(u);
+		sinu = MathUtils::sin(u);
+		sinv = MathUtils::sin(v);
+		cosv = MathUtils::cos(v);
 
-		cosvToTheE2Minus1 = powf(cosv, e1 - 1.0f);
+		cosuToTheE1Minus1 = powf(cosu, e1 - 1.0f);
 
-		end = (-1.0f * e1 * cosvToTheE2Minus1 * sinv);
+		if (this->isSphere() || (e1 == 1.0f && e2 == 1.0f)) {
+			return glm::vec3(a1 * cosv * -sinu, a2 * -sinu * sinv, a3 * -cosu);
+		}
 
-		out.x = MathUtils::sgnf(cosu) * a1 * powf(MathUtils::abs(cosu), e2) * end;
-		out.y = MathUtils::sgnf(sinu) * a2 * powf(MathUtils::abs(sinu), e2) * end;
-		out.z = MathUtils::sgnf(sinv) * a3 * e1 * powf(MathUtils::abs(sinv), e1 - 1.0f) * cosv;
+		end = (-1.0f * e1 * cosuToTheE1Minus1 * sinu);
+
+		out.x = MathUtils::sgnf(cosv) * a1 * powf(MathUtils::abs(cosv), e2) * end;
+		out.y = MathUtils::sgnf(sinv) * a2 * powf(MathUtils::abs(sinv), e2) * end;
+		out.z = MathUtils::sgnf(sinu) * a3 * e1 * powf(MathUtils::abs(sinu), e1 - 1.0f) * cosu;
+
+		if (IsZeroVector(out)) {
+			out.z = 1.0f;
+		}
 
 		return out;
 	}
 
 	glm::vec3 ddSigmaDvDv(float u, float v) {
 		glm::vec3 out;
-		float cosu, cosvToTheE2, sinu;
+		float cosv, cosuToTheE1, sinv;
 
-		cosu = MathUtils::cos(v);
-		sinu = MathUtils::sin(v);
-		cosvToTheE2 = powf(MathUtils::cos(u), e1);
+		cosv = MathUtils::cos(v);
+		sinv = MathUtils::sin(v);
+		cosuToTheE1 = powf(MathUtils::cos(u), e1);
 
-		//TODO multiply by sgn twice?
-		out.x = /*sgnf(cosu) */ -e2 * a1 * cosvToTheE2 * (-1.0f * (e2 - 1.0f) * powf(/*absf(*/cosu, e2 - 2.0f) * sinu * sinu + cosu * powf(/*absf(*/cosu, e2 - 1.0f));
-		out.y = /*sgnf(sinu) */ e2 * a1 * cosvToTheE2 * ((e2 - 1.0f) * powf(/*absf*/(sinu), e2 - 2.0f) * cosu * cosu - sinu * powf(/*absf*/(sinu), e2 - 1.0f));
+		float e2Minus1 = e2 - 1.0f;
+
+		out.x = MathUtils::sgnf(cosv) * -e2 * a1 * cosuToTheE1 * (-1.0f * (e2Minus1) * powf(MathUtils::abs(cosv), e2 - 2.0f) * sinv * sinv + cosv * powf(MathUtils::abs(cosv), e2Minus1));
+		out.y = MathUtils::sgnf(sinv) *  e2 * a1 * cosuToTheE1 * ((e2Minus1) * powf(MathUtils::abs(sinv), e2 - 2.0f) * cosv * cosv - sinv * powf(MathUtils::abs(sinv), e2Minus1));
 		out.z = 0.0f;
 
 		return out;
@@ -260,16 +276,16 @@ public:
 
 	glm::vec3 ddSigmaDuDv(float u, float v) {
 		glm::vec3 out;
-		float sinu, sinv, cosu, cosvToTheE2Minus1, end;
+		float sinu, sinv, cosv, cosuToTheE1Minus1, end;
 
-		sinu = MathUtils::sin(v);
-		cosu = MathUtils::cos(v);
-		sinv = MathUtils::sin(u);
-		cosvToTheE2Minus1 = powf(MathUtils::cos(u), e1 - 1.0f);
-		end = e1 * cosvToTheE2Minus1 * sinv;
+		sinv = MathUtils::sin(v);
+		cosv = MathUtils::cos(v);
+		sinu = MathUtils::sin(u);
+		cosuToTheE1Minus1 = powf(MathUtils::cos(u), e1 - 1.0f);
+		end = e1 * cosuToTheE1Minus1 * sinu;
 
-		out.x = /*sgnf(cosu) */ e2 * a1 * sinu * powf(/*absf*/(cosu), e2 - 1.0f) * end;
-		out.y = /*sgnf(sinu) */ e2 * a2 * cosu * powf(/*absf*/(sinu), e2 - 1.0f) * -1.0f * end;
+		out.x = MathUtils::sgnf(cosv) * e2 * a1 * sinv * powf(MathUtils::abs(cosv), e2 - 1.0f) * end;
+		out.y = MathUtils::sgnf(sinv) * e2 * a2 * cosv * powf(MathUtils::abs(sinv), e2 - 1.0f) * -1.0f * end;
 		out.z = 0.0f;
 
 		return out;
@@ -277,27 +293,20 @@ public:
 
 	glm::vec3 ddSigmaDuDu(float u, float v) {
 		glm::vec3 out;
-		float sinv, cosv, cosvToTheE2Minus2, cosvToTheE2Minus1, cosu, sinu;
-		sinv = MathUtils::sin(u);
-		cosv = MathUtils::cos(u);
-		cosu = MathUtils::cos(v);
-		sinu = MathUtils::sin(v);
-		cosvToTheE2Minus1 = powf(cosv, e1 - 1.0f);
-		//cosvToTheE2Minus2 = cosvToTheE2Minus1 - 1.0f;
-		cosvToTheE2Minus2 = powf(cosv, e1 - 2.0f);
+		float sinv, cosv, cosuToTheE1Minus2, cosuToTheE1Minus1, cosu, sinu;
+		float e1Minus1 = e1 - 1.0f;
+		sinu = MathUtils::sin(u);
+		cosu = MathUtils::cos(u);
+		cosv = MathUtils::cos(v);
+		sinv = MathUtils::sin(v);
+		cosuToTheE1Minus1 = powf(cosu, e1Minus1);
+		cosuToTheE1Minus2 = powf(cosu, e1 - 2.0f);
 
-		float inner = -1.0f * (e1 - 1.0f) * cosvToTheE2Minus2 * sinv + cosv * cosvToTheE2Minus1;
-		out.x = /*sgnf(cosu) */ -e1 * a1 * powf(/*absf*/(cosu), e2) * inner;
-		out.y = /*sgnf(sinu) */ -e1 * a2 * powf(/*absf*/(sinu), e2) * inner;
-		//out.z = a3 * e1 * ((e1 - 1.0f) * powf(sinv, e1 - 2.0f) * cosv - sinv * powf(sinv, e1 - 1.0f));
+		float inner = e1 * (-1.0f * (e1Minus1) * cosuToTheE1Minus2 * sinu * sinu + cosu * cosuToTheE1Minus1);
+		out.x = MathUtils::sgnf(cosv) * -a1 * powf(MathUtils::abs(cosv), e2) * inner;
+		out.y = MathUtils::sgnf(sinv) * -a2 * powf(MathUtils::abs(sinv), e2) * inner;
 
-		float front = a3 * e1;
-		float innerFirst = (e1 - 1.0f) * powf(/*absf*/(sinv), e1 - 2.0f) * cosv;
-		float innerSecond = sinv * powf(/*absf*/(sinv), e1 - 1.0f);
-
-		//TODO multiply by sgn twice?
-		float z = /*sgnf(sinv) */ front * (innerFirst - innerSecond);
-		out.z = z;
+		out.z = a3 * e1 * (e1Minus1 * powf(sinv, e1 - 2.0f) * cosv * cosv - sinv * powf(sinv, e1Minus1));
 
 		return out;
 	}
@@ -326,6 +335,7 @@ public:
 	static glm::vec3 SlideUpdate(Superquadric &sq, ParamPoint &contactPt, glm::vec3 slideDirection) {
 
 		glm::vec2 inputUV = glm::vec2(contactPt.u, contactPt.v);
+		glm::vec2 curUV = inputUV;
 
 		float slideMagnitude = sqrtf(slideDirection.x * slideDirection.x + slideDirection.y * slideDirection.y + slideDirection.z  * slideDirection.z);
 		float movedMagnitude = 0.0f;
@@ -333,21 +343,27 @@ public:
 		//put contact pt in local space: 
 		glm::vec3 globalContactOriginal(contactPt.pt);
 		glm::mat4 rotMat = sq.getRotationMatrix();
-		glm::vec3 localContactPt = Superquadric::getLocalCoordinates(contactPt.pt, sq.translation, rotMat);
+		glm::vec3 localContactPt = ShapeUtils::getLocalCoordinates(contactPt.pt, sq.translation, rotMat, sq.scaling);
+		glm::vec3 origLocalContactPt = localContactPt;
+
+		float origInsideOutsideValue = sq.f(localContactPt);
+		if (origInsideOutsideValue < .98f) {
+			std::cout << "input Stationary IO value: " << origInsideOutsideValue << std::endl;
+		}
 
 		glm::vec3 slidePt;
 
-		//  v = mouse movement (slide direction)
-		// vp = projection of V onto tangent plane
+		glm::vec2 sysVal;
+		float totSysVal;
 
-		/*
-
-		float deltaT = .1f;
+		float deltaT = .01f;
 		int i = 0;
-		while (i < 10) {
 
-			glm::vec3 previousPt = contactPt.pt;
-			glm::vec3 fff = FirstFundamentalForm(sq, contactPt.u, contactPt.v);
+		glm::vec2 lastUpdate;
+
+		while (i < 100) {
+			glm::vec3 previousPt = localContactPt;
+			glm::vec3 fff = FirstFundamentalForm(sq, curUV.x, curUV.y);
 
 			//Trying to solve system: 
 			// | E F |   | u. |  =  | sigmaU * vp |
@@ -366,15 +382,126 @@ public:
 			// | v. |
 			float uDotvDot[2];
 
-			glm::vec3 sigmaU = glm::normalize(sq.dSigmaDu(contactPt.u, contactPt.v));
-			glm::vec3 sigmaV = glm::normalize(sq.dSigmaDv(contactPt.u, contactPt.v));
+			glm::vec3 sigmaU = glm::normalize(sq.dSigmaDu(curUV.x, curUV.y));
+			glm::vec3 sigmaV = glm::normalize(sq.dSigmaDv(curUV.x, curUV.y));
 
 			//glm::vec3 vp = projection(vp, sigmaU) + projection(vp, )
 
 			////Slide direction needs to be in sq's local space:
 			//glm::vec3 slide = contactPt.pt + Superquadric::getLocalCoordinates(slideDirection, sq.translation, sq.getRotationMatrix());
-			glm::mat4 transposee = glm::transpose(sq.getRotationMatrix());
-			slideDirection = Superquadric::applyRotation(slideDirection, transposee);
+			glm::mat4 transpose = glm::transpose(sq.getRotationMatrix());
+			slideDirection = glm::normalize(Superquadric::applyRotation(slideDirection, transpose));
+
+			// | sigmaU * slideDir |
+			// | sigmaV * slideDir |
+
+			glm::vec3 vProj = (glm::dot(sigmaU, slideDirection)*sigmaU + glm::dot(sigmaV, slideDirection)*sigmaV);
+			//glm::vec3 tangNormal = glm::normalize(glm::cross(sigmaU, sigmaV));
+			//glm::vec3 vProj = slideDirection - (glm::dot(tangNormal, slideDirection) * tangNormal);
+
+			float sigmaUsigmaVdotprods[2] = { glm::dot(vProj, sigmaU), glm::dot(vProj, sigmaV) };
+
+			//Solve (Cramer's rule):
+			uDotvDot[0] = (sigmaUsigmaVdotprods[0] * EFFG[1][1] - sigmaUsigmaVdotprods[1] * EFFG[0][1]) / EFFGdet;
+			uDotvDot[1] = (sigmaUsigmaVdotprods[1] * EFFG[0][0] - sigmaUsigmaVdotprods[0] * EFFG[1][0]) / EFFGdet;
+
+			//Check if this solution is valid:
+			sysVal.x = fff.x * uDotvDot[0] + fff.y * uDotvDot[1] - sigmaUsigmaVdotprods[0];
+			sysVal.y = fff.y * uDotvDot[0] + fff.z * uDotvDot[1] - sigmaUsigmaVdotprods[1];
+
+			totSysVal = MathUtils::abs(sysVal.x) + MathUtils::abs(sysVal.y);
+
+			//Update by constant distance
+			// deltaS = sqrt( E*uDot^2 + 2*F*uDot*vDot + G*vDot^2 ) * deltaT
+			//Fix deltaS, since it represents the change of curve length along the surface,
+			// and solve for deltaT using the calculated values of uDot, vDot, E,F,G
+
+			float deltaS = .015f;
+			float sqrtVal = sqrtf(fff.x * uDotvDot[0] * uDotvDot[0] + 2.0f * fff.y * uDotvDot[0] * uDotvDot[1] + fff.z * uDotvDot[1] * uDotvDot[1]);
+
+			float deltaT = deltaS / sqrtVal;
+
+			///std::cout << "Delta T: " << deltaT << std::endl;
+
+			lastUpdate.x = deltaT * uDotvDot[0];
+			lastUpdate.y = deltaT * uDotvDot[1];
+			curUV = curUV + lastUpdate;
+			glm::vec3 i3 = glm::vec3();
+			sq.evalParams(curUV.x, curUV.y, localContactPt, i3);
+
+			glm::vec3 diffVec = origLocalContactPt - localContactPt;
+			if (abs(diffVec.x) > .1f || abs(diffVec.y) > .1f || abs(diffVec.z) > .1f) {
+				curUV = curUV - (.5f * lastUpdate);
+				sq.evalParams(curUV.x, curUV.y, localContactPt, i3);
+
+				glm::vec3 diffVec = origLocalContactPt - localContactPt;
+				if (abs(diffVec.x) > .1f || abs(diffVec.y) > .1f || abs(diffVec.z) > .1f) {
+					curUV = curUV - (.25f * lastUpdate);
+					sq.evalParams(curUV.x, curUV.y, localContactPt, i3);
+				}
+			}
+
+			if (totSysVal < .01f) {
+				break;
+			}
+
+			
+
+			i++;
+
+			movedMagnitude += glm::distance(origLocalContactPt, localContactPt);
+
+			if (movedMagnitude > .1f) {
+				///std::cout << "Moved mag: " << std::to_string(movedMagnitude) << std::endl;
+			}
+		}
+
+		//std::cout << "Solved system in " << i << " iterations" << std::endl;
+
+		/*
+
+		//  v = mouse movement (slide direction)
+		// vp = projection of V onto tangent plane
+
+		//Holds value of system (left side - rightside)
+		glm::vec2 systemVal(0.0f, 0.0f);
+
+		//Holds summed absolute value of system (goal is 0)
+		float totSysVal = 100.0f;
+
+		float deltaT = .1f;
+		int i = 0;
+		while (i < 100) {
+
+			glm::vec3 previousPt = localContactPt;
+			glm::vec3 fff = FirstFundamentalForm(sq, curUV.x, curUV.y);
+
+			//Trying to solve system: 
+			// | E F |   | u. |  =  | sigmaU * vp |
+			// | F G |   | v. |  =  | sigmaV * vp |
+
+			// for (u., v.)
+
+			// | E F |
+			// | F G |
+			float EFFG[2][2] = { { fff.x, fff.y },
+			{ fff.y, fff.z } };
+
+			float EFFGdet = EFFG[0][0] * EFFG[1][1] - EFFG[0][1] * EFFG[1][0];
+
+			// | u. |
+			// | v. |
+			float uDotvDot[2];
+
+			glm::vec3 sigmaU = glm::normalize(sq.dSigmaDu(curUV.x, curUV.y));
+			glm::vec3 sigmaV = glm::normalize(sq.dSigmaDv(curUV.x, curUV.y));
+
+			//glm::vec3 vp = projection(vp, sigmaU) + projection(vp, )
+
+			////Slide direction needs to be in sq's local space:
+			//glm::vec3 slide = contactPt.pt + Superquadric::getLocalCoordinates(slideDirection, sq.translation, sq.getRotationMatrix());
+			glm::mat4 transpose = glm::transpose(sq.getRotationMatrix());
+			slideDirection = Superquadric::applyRotation(slideDirection, transpose);
 
 			// | sigmaU * slideDir |
 			// | sigmaV * slideDir |
@@ -386,13 +513,21 @@ public:
 			uDotvDot[0] = (sigmaUsigmaVdotprods[0] * EFFG[1][1] - sigmaUsigmaVdotprods[1] * EFFG[0][1]) / EFFGdet;
 			uDotvDot[1] = (sigmaUsigmaVdotprods[1] * EFFG[0][0] - sigmaUsigmaVdotprods[0] * EFFG[1][0]) / EFFGdet;
 
+			//Check if this solution is valid:
+			systemVal.x = fff.x * uDotvDot[0] + fff.y * uDotvDot[1] - sigmaUsigmaVdotprods[0];
+			systemVal.y = fff.y * uDotvDot[0] + fff.z * uDotvDot[1] - sigmaUsigmaVdotprods[1];
 
+			totSysVal = MathUtils::abs(systemVal.x) + MathUtils::abs(systemVal.y);
 
-			contactPt.u = contactPt.u + deltaT * uDotvDot[0];
-			contactPt.v = contactPt.v + deltaT * uDotvDot[1];
+			if (totSysVal < .01f) {
+				break;
+			}
+
+			curUV.x = curUV.x + deltaT * uDotvDot[0];
+			curUV.y = curUV.y + deltaT * uDotvDot[1];
 
 			glm::vec3 i3 = glm::vec3();
-			sq.evalParams(contactPt.u, contactPt.v, contactPt.pt, i3);
+			sq.evalParams(curUV.x, curUV.y, localContactPt, i3);
 
 			i++;
 
@@ -401,15 +536,18 @@ public:
 			//std::cout << "Moved mag: " << std::to_string(movedMagnitude) << std::endl;
 
 		}
+		
+
 		*/
+		/*
 
 		// | u. |
 		// | v. |
 		float uDotvDot[2];
 
 		//Vectors spanning the tangent plane at contact pt:
-		glm::vec3 sigmaU = glm::normalize(sq.dSigmaDu(contactPt.u, contactPt.v));
-		glm::vec3 sigmaV = glm::normalize(sq.dSigmaDv(contactPt.u, contactPt.v));
+		glm::vec3 sigmaU = glm::normalize(sq.dSigmaDu(inputUV.x, inputUV.y));
+		glm::vec3 sigmaV = glm::normalize(sq.dSigmaDv(inputUV.x, inputUV.y));
 
 		//Slide direction needs to be in sq's local space: TODO ALSO UNDO VIEW MATRIX
 		glm::mat4 transpose = glm::transpose(sq.getRotationMatrix()); //transpose of rotation mat is inverse
@@ -423,21 +561,65 @@ public:
 		float sigmaUupdate = sqrtf(projOntoSigmaU.x * projOntoSigmaU.x + projOntoSigmaU.y * projOntoSigmaU.y + projOntoSigmaU.z * projOntoSigmaU.z);
 		float sigmaVupdate = sqrtf(projOntoSigmaV.x * projOntoSigmaV.x + projOntoSigmaV.y * projOntoSigmaV.y + projOntoSigmaV.z * projOntoSigmaV.z);
 
-		contactPt.u = contactPt.u + sigmaUupdate;
-		contactPt.v = contactPt.v + sigmaVupdate;
+		inputUV.x = inputUV.x + sigmaUupdate;
+		inputUV.y = inputUV.y + sigmaVupdate;
 
 		glm::vec3 i3 = glm::vec3();
-		sq.evalParams(contactPt.u, contactPt.v, localContactPt, i3);
+		sq.evalParams(inputUV.x, inputUV.y, localContactPt, i3);
+
+		movedMagnitude = MathUtils::magnitude(origLocalContactPt - localContactPt);
+		if (movedMagnitude > .01f) {
+			std::cout << "Big slide update " << std::endl;
+
+			inputUV.x = inputUV.x - .5f * sigmaUupdate;
+			inputUV.y = inputUV.y - .5f * sigmaVupdate;
+
+			sq.evalParams(inputUV.x, inputUV.y, localContactPt, i3);
+
+			movedMagnitude = MathUtils::magnitude(origLocalContactPt - localContactPt);
+
+			if (movedMagnitude > .01f) {
+				std::cout << "still big after adjustment" << std::endl;
+
+				inputUV.x = inputUV.x - .25f * sigmaUupdate;
+				inputUV.y = inputUV.y - .25f * sigmaVupdate;
+
+				sq.evalParams(inputUV.x, inputUV.y, localContactPt, i3);
+				movedMagnitude = MathUtils::magnitude(origLocalContactPt - localContactPt);
+
+				if (movedMagnitude > .01f) {
+					inputUV.x = contactPt.u + .01f * sigmaUupdate;
+					inputUV.y = contactPt.v + .01f * sigmaVupdate;
+					sq.evalParams(inputUV.x, inputUV.y, localContactPt, i3);
+					movedMagnitude = MathUtils::magnitude(origLocalContactPt - localContactPt);
+				}
+			}
+		}
+		*/
+
+		float insideOutsideValue = sq.f(localContactPt);
+		if (insideOutsideValue < .98f) { 
+			///std::cout << "Stationary IO value: " << insideOutsideValue << std::endl;
+		}
 
 		// Reapply model transformation:
-		slidePt = Superquadric::getGlobalCoordinates(localContactPt, sq.translation, rotMat);
+		slidePt = ShapeUtils::getGlobalCoordinates(localContactPt, sq.translation, rotMat, sq.scaling);
 
 		if (checkVecForNaN(slidePt)) {
-			std::cout << " bad derivatives" << std::endl;
+			///std::cout << " bad derivatives" << std::endl;
 		}
 
 		//Return vector from contact pt to slide pt
-		return slidePt - globalContactOriginal;
+		glm::vec3 update = slidePt - globalContactOriginal;
+		if (IsZeroVector(update)) {
+			///std::cout << "No update" << std::endl;
+		}
+
+		contactPt.u = curUV.x;
+		contactPt.v = curUV.y;
+		contactPt.pt = slidePt;
+		
+		return update;
 	}
 
 	//Returns point in local space
@@ -502,47 +684,147 @@ public:
 	//TODO not considering rotation of objects
 
 	//slidePt is new contact pt on stationarySq after applying slide
-	static glm::vec3 SlidingSurfaceUpdate(Superquadric &slidingSq, Superquadric &stationarySq, ParamPoint &slidingSurfaceContactPt, glm::vec3 slidePt) {
-
-		glm::mat4 stationaryRotMat = stationarySq.getRotationMatrix();
-		glm::vec3 slidePtLocal = Superquadric::getLocalCoordinates(slidePt/*slidingSurfaceContactPt.pt*/, stationarySq.translation, stationaryRotMat);
-		glm::vec3 slidePtNorm = stationarySq.unitnormal(slidePtLocal);
-
-		//Trying to find point on slidingSq whose normal vector is opposite direction of slidePt's normal on stationarySq
-		glm::vec3 goalNorm = -slidePtNorm;
-		float u = slidingSurfaceContactPt.u;
-		float v = slidingSurfaceContactPt.v;
+	static glm::vec3 SlidingSurfaceUpdate(Superquadric &slidingSq, Superquadric &stationarySq, ParamPoint &slidingSurfaceContactPt, ParamPoint &slidePt) {
 
 		glm::mat4 slidingSqRotMat = slidingSq.getRotationMatrix();
-		glm::vec3 localContactSlidePt = slidingSq.getLocalCoordinates(slidingSurfaceContactPt.pt, slidingSq.translation, slidingSqRotMat);
+		glm::vec3 localContactSlidePt = ShapeUtils::getLocalCoordinates(slidingSurfaceContactPt.pt, slidingSq.translation, slidingSqRotMat, slidingSq.scaling);
 
-		glm::vec3 testPt, testNorm;
-		slidingSq.evalParams(u, v, testPt, testNorm);
 
-		float delta = .01f;
-		glm::vec3 bestNorm = slidingSq.unitnormal(localContactSlidePt);//slidingSq.NormalFromSurfaceParams(u, v);
+
+		glm::mat4 stationaryRotMat = stationarySq.getRotationMatrix();
+		glm::vec3 slidePtLocal = ShapeUtils::getLocalCoordinates(slidePt.pt, stationarySq.translation, stationaryRotMat, stationarySq.scaling);
+
+		glm::vec3 localStationaryNormal;// = stationarySq.unitnormal(slidePtLocal);
+		glm::vec3 temp;
+		stationarySq.evalParams(slidePt.u, slidePt.v, temp, localStationaryNormal);
+
+		glm::vec3 globalStationaryNormal = glm::vec3(stationaryRotMat * glm::vec4(localStationaryNormal.x, localStationaryNormal.y, localStationaryNormal.z, 1.0f));
+
+		//Trying to find point on slidingSq whose normal vector is opposite direction of slidePt's normal on stationarySq
+		glm::vec3 globalSlidingNorm = -globalStationaryNormal;
+		//Need to search for pt in local space with this normal:
+		glm::vec3 localSlidingNorm = glm::vec3(glm::transpose(slidingSqRotMat) * glm::vec4(globalSlidingNorm.x, globalSlidingNorm.y, globalSlidingNorm.z, 1.0f));
+		glm::vec3 goalNorm = glm::normalize(localSlidingNorm);
+
+		///std::cout << "Goal norm: " << goalNorm.x << ", " << goalNorm.y << ", " << goalNorm.z << std::endl;
+
+		//slidingSq.n
+
+		//Want to find pt on slidingSq with normal opposite to slidePtNorm
+		// i.e. pt whose tangent plane has that same normal, i.e. sigmaU dot N = 0 & sigmaV dot N = 0
+		// This gives the system: 
+		//  |sigmaU dot N| = |0|
+		//  |sigmaV dot N|   |0|
+
+		//use newton's method and Jacobian to get system:
+		//  |sigmaUU dot N   sigmaUV dot N| |u.| = | - sigmaU dot N |
+		//  |sigmaUV dot N   sigmaVV dot N| |v.|   | - sigmaV dot N |
+
+		/*
+		int i = 0;
+		int maxIterations = 50;
+		float deltaT = .06f;
+
+		glm::mat2 J;
+
+		glm::vec2 origUV = glm::vec2(slidingSurfaceContactPt.u, slidingSurfaceContactPt.v);
+		glm::vec2 UiVi = glm::vec2(slidingSurfaceContactPt.u, slidingSurfaceContactPt.v);
+		//Right side of first system. Stops when both elements are 0:
+		glm::vec2 Yi = evalSSU(UiVi, slidingSq, goalNorm);
+
+		while (!IsZeroVector(Yi) && i < maxIterations) {
+			J = evalJacobianSSU(UiVi, slidingSq, goalNorm);
+
+			//TODO eval more efficiently:
+
+			glm::mat2 Jinverse = glm::inverse(J);
+			glm::vec2 deltaUV = Jinverse * glm::vec2(-Yi.x, -Yi.y);
+
+			UiVi += deltaT * deltaUV;
+
+			Yi = evalSSU(UiVi, slidingSq, goalNorm);
+
+			i++;
+		}
+
+		if (i == maxIterations) {
+			//return nan's. 
+			//TODO better practice:
+			return glm::vec3(powf(0.0, -2.0f), powf(0.0, -2.0f), powf(0.0, -2.0f));
+		}
+		
+
+		glm::vec3 pt = slidingSq.PointsFromSurfaceParams(UiVi.x, UiVi.y);
+
+		if (checkVecForNaN(pt)) {
+			std::cout << "Bad point" << std::endl;
+		}
+
+		//Pt is orthogonal to normal, but going wrong direction
+		// if this condition is true, the normals are parallel, we want the opposite direction normal
+		if (glm::dot(slidingSq.unitnormal(pt), goalNorm) < 0.0f) {
+			return glm::vec3(powf(0.0, -2.0f), powf(0.0, -2.0f), powf(0.0, -2.0f));
+		}
+
+		//glm::mat4 slidingSqRotMat = slidingSq.getRotationMatrix();
+		return Superquadric::getGlobalCoordinates(pt, slidingSq.translation, slidingSqRotMat);
+
+		//brute force attempt:
+
+		*/
+
+		float u, v;
+		u = slidingSurfaceContactPt.u;
+		v = slidingSurfaceContactPt.v;
+
+		float origU = u;
+		float origV = v;
+
+		float delta = .001f;
+		//glm::vec3 bestNorm = slidingSq.unitnormal(localContactSlidePt);//slidingSq.NormalFromSurfaceParams(u, v);
+		glm::vec3 bestNorm;
+		slidingSq.evalParams(u, v, localContactSlidePt, bestNorm);
 
 		int iterations = 0;
 
-		while (checkVecs(goalNorm, bestNorm) > .01f) {
-			if (iterations > 100) {
+		glm::vec3 diffVec = goalNorm - bestNorm;
+
+		//while (checkVecs(goalNorm, bestNorm) > .005f) {
+		while(diffVec.x > .001f && diffVec.y > .001f && diffVec.z > .001f){
+			if (iterations == 100) {
 				delta *= 10.0f;
 			}
+			if (iterations == 200) {
+				delta /= 10.0f;
+			}
+			if (iterations == 300) {
+				delta *= 10.0f;
+			}
+			if (iterations == 400) {
+				delta *= 10.0f;
+			}
+			if (iterations == 500) {
+				delta /= 10.0f;
+			}
+			if (iterations == 600) {
+				delta /= 10.0f;
+			}
 			if (iterations > 1000) {
+				std::cout << "> 1000 iters to find normal" << std::endl;
 				break;
 			}
 			glm::vec3 pt, extra;
 			slidingSq.evalParams(u + delta, v, pt, extra);
-			glm::vec3 addU = slidingSq.unitnormal(pt);
+			glm::vec3 addU = glm::normalize(extra);// slidingSq.unitnormal(pt);
 
 			slidingSq.evalParams(u - delta, v, pt, extra);
-			glm::vec3 subU = slidingSq.unitnormal(pt);
+			glm::vec3 subU = glm::normalize(extra);//slidingSq.unitnormal(pt);
 
 			slidingSq.evalParams(u, v + delta, pt, extra);
-			glm::vec3 addV = slidingSq.unitnormal(pt);
+			glm::vec3 addV = glm::normalize(extra);//slidingSq.unitnormal(pt);
 
 			slidingSq.evalParams(u, v - delta, pt, extra);
-			glm::vec3 subV = slidingSq.unitnormal(pt);
+			glm::vec3 subV = glm::normalize(extra);//slidingSq.unitnormal(pt);
 
 			int bestOf4 = findClosestOf4(addU, subU, addV, subV, goalNorm);
 			if (bestOf4 == 1) {
@@ -562,68 +844,28 @@ public:
 				bestNorm = subV;
 			}
 
+			if (checkVecForNaN(bestNorm)) {
+				///std::cout << "nan" << std::endl;
+			}
+
+			diffVec = goalNorm - bestNorm;
+
 			iterations++;
 		}
 
 		glm::vec3 pt, norm;
 		slidingSq.evalParams(u, v, pt, norm);
-		return slidingSq.getGlobalCoordinates(pt, slidingSq.translation, slidingSqRotMat);
+		float insideOutsideValue = slidingSq.f(pt);
+		///std::cout << "Sliding IO value: " << insideOutsideValue << std::endl;
 
-		//slidingSq.n
+		float deltaU = MathUtils::abs(u - origU);
+		float deltaV = MathUtils::abs(v - origV);
 
-		//Want to find pt on slidingSq with normal opposite to slidePtNorm
-		// i.e. pt whose tangent plane has that same normal, i.e. sigmaU dot N = 0 & sigmaV dot N = 0
-		// This gives the system: 
-		//  |sigmaU dot N| = |0|
-		//  |sigmaV dot N|   |0|
+		///std::cout << "DeltaU SSU: " << deltaU << std::endl;
+		///std::cout << "DeltaV SSU: " << deltaV << std::endl;
 
-		//use newton's method and Jacobian to get system:
-		//  |sigmaUU dot N   sigmaUV dot N| |u.| = | - sigmaU dot N |
-		//  |sigmaUV dot N   sigmaVV dot N| |v.|   | - sigmaV dot N |
-
-		/*
-		int i = 0;
-		int maxIterations = 10;
-		float stepSize = .1f;
-
-		glm::mat2 J;
-
-		glm::vec2 UiVi = glm::vec2(slidingSurfaceContactPt.u, slidingSurfaceContactPt.v);
-		//Right side of first system. Stops when both elements are 0:
-		glm::vec2 Yi = evalSSU(UiVi, slidingSq, slidePtNorm);
-
-		while (!IsZeroVector(Yi) && i < maxIterations) {
-			J = evalJacobianSSU(UiVi, slidingSq, slidePtNorm);
-
-			//TODO eval more efficiently:
-
-			glm::mat2 Jinverse = glm::inverse(J);
-			glm::vec2 deltaUV = Jinverse * glm::vec2(-Yi.x, -Yi.y);
-
-			UiVi += deltaUV;
-
-			Yi = evalSSU(UiVi, slidingSq, slidePtNorm);
-
-			i++;
-		}
-
-		if (i == maxIterations) {
-			//return nan's. 
-			//TODO better practice:
-			return glm::vec3(powf(0.0, -2.0f), powf(0.0, -2.0f), powf(0.0, -2.0f));
-		}
+		return ShapeUtils::getGlobalCoordinates(pt, slidingSq.translation, slidingSqRotMat, slidingSq.scaling);
 		
-
-		glm::vec3 pt = slidingSq.PointsFromSurfaceParams(UiVi.x, UiVi.y);
-
-		//Pt is orthogonal to normal, but going wrong direction
-		// if this condition is true, the normals are parallel, we want the opposite direction normal
-		if (glm::dot(slidingSq.unitnormal(pt), slidePtNorm) > 0.0f) {
-			return glm::vec3(powf(0.0, -2.0f), powf(0.0, -2.0f), powf(0.0, -2.0f));
-		}
-
-		glm::mat4 slidingSqRotMat = slidingSq.getRotationMatrix();
-		return Superquadric::getGlobalCoordinates(pt, slidingSq.translation, slidingSqRotMat);*/
 	}
 
 	//Evals first system in SlidingSurfaceUpdate (above)
@@ -631,23 +873,34 @@ public:
 	//  |sigmaV dot N|   |0|
 	static glm::vec2 evalSSU(glm::vec2 uv, Superquadric &sq, glm::vec3 norm) {
 		glm::vec3 sigU, sigV;
-		sigU = sq.dSigmaDu(uv.x, uv.y);
-		sigV = sq.dSigmaDv(uv.x, uv.y);
+		sigU = glm::normalize(sq.dSigmaDu(uv.x, uv.y));
+		sigV = glm::normalize(sq.dSigmaDv(uv.x, uv.y));
 
 		return glm::vec2(glm::dot(sigU, norm), glm::dot(sigV, norm));
 	}
 
 	static glm::mat2 evalJacobianSSU(glm::vec2 uv, Superquadric &sq, glm::vec3 norm) {
-		glm::vec3 sigUU, sigUV, sigVV;
+		glm::vec3 sigUU, sigUV, sigVV, sigUUhat, sigUVhat, sigVVhat;
 		sigUU = sq.ddSigmaDuDu(uv.x, uv.y);
 		sigUV = sq.ddSigmaDuDv(uv.x, uv.y);
 		sigVV = sq.ddSigmaDvDv(uv.x, uv.y);
 
-		return glm::mat2(glm::vec2(glm::dot(sigUU, norm), glm::dot(sigUV, norm)), glm::vec2(glm::dot(sigUV, norm), glm::dot(sigVV, norm)));
+		sigUUhat = glm::normalize(sigUU);
+		sigUVhat = glm::normalize(sigUV);
+		sigVVhat = glm::normalize(sigVV);
+
+		if (checkVecForNaN(sigUU) || checkVecForNaN(sigVV) || checkVecForNaN(sigUV)) {
+			std::cout << "nan 2nd derivs" << std::endl;
+		}
+		return glm::mat2(glm::vec2(glm::dot(sigUUhat, norm), glm::dot(sigUVhat, norm)), glm::vec2(glm::dot(sigUVhat, norm), glm::dot(sigVVhat, norm)));
 	}
 
 	static bool IsZeroVector(glm::vec2 vec) {
-		return MathUtils::abs(vec.x) < .0001f && MathUtils::abs(vec.y) < .0001f;
+		return MathUtils::abs(vec.x) < .001f && MathUtils::abs(vec.y) < .001f;
+	}
+
+	static bool IsZeroVector(glm::vec3 vec) {
+		return MathUtils::abs(vec.x) < .0001f && MathUtils::abs(vec.y) < .0001f && MathUtils::abs(vec.z) < .0001f;
 	}
 
 	static void InitializeClosestPoints(Superquadric &sq) {
@@ -754,11 +1007,11 @@ public:
 		if (sq1.isSphere() && sq2.isSphere()) {
 			glm::vec3 sq1ToSq2 = sq2.translation - sq1.translation;
 			glm::vec2 param1 = sq1.SurfaceParamValuesFromSurfacePoint(glm::normalize(sq1ToSq2));
-			sq1closest = getGlobalCoordinates(glm::normalize(sq1ToSq2), sq1.translation, sq1RotMat);
+			sq1closest = ShapeUtils::getGlobalCoordinates(glm::normalize(sq1ToSq2), sq1.translation, sq1RotMat, sq1.scaling);
 
 			glm::vec3 sq2ToSq1 = sq1.translation - sq2.translation;
 			glm::vec2 param2 = sq2.SurfaceParamValuesFromSurfacePoint(glm::normalize(sq2ToSq1));
-			sq2closest = getGlobalCoordinates(glm::normalize(sq2ToSq1), sq2.translation, sq2RotMat);
+			sq2closest = ShapeUtils::getGlobalCoordinates(glm::normalize(sq2ToSq1), sq2.translation, sq2RotMat, sq2.scaling);
 
 			prev1.pt = sq1closest;
 			prev1.u = param1.x;
@@ -829,7 +1082,7 @@ public:
 
 		for (unsigned int i = 0; i < s1.size(); i++) {
 			glm::vec2 p1 = s1[i];
-			glm::vec3 pt1 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(p1.x, p1.y), sq1.translation, sq1RotMat);
+			glm::vec3 pt1 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(p1.x, p1.y), sq1.translation, sq1RotMat, sq1.scaling);
 			glm::vec2 p2;
 			for (unsigned int j = 0; j < s2.size(); j++) {
 				/*if ((sq2.e1 - 1.0f) < .001f && (sq2.e2 - 1.0f) < .001f){
@@ -840,7 +1093,7 @@ public:
 				p2 = s2[j];
 				//}
 
-				glm::vec3 pt2 = getGlobalCoordinates(sq2.PointsFromSurfaceParams(p2.x, p2.y), sq2.translation, sq2RotMat);
+				glm::vec3 pt2 = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(p2.x, p2.y), sq2.translation, sq2RotMat, sq2.scaling);
 				float dist = ShapeUtils::squaredDistance(pt1, pt2);
 				if (dist < closest) {
 					closest = dist;
@@ -897,6 +1150,28 @@ public:
 		return this->a1 == 1.0f && this->a2 == 1.0f && this->a3 == 1.0f && this->e1 == 1.0f && this->e2 == 1.0f;
 	}
 
+	bool testPoint(ParamPoint pp) {
+		glm::mat4 rotMat = this->getRotationMatrix();
+		glm::vec3 localPt = ShapeUtils::getLocalCoordinates(pp.pt, this->translation, rotMat, scaling);
+
+		glm::vec3 pt, norm;
+		this->evalParams(pp.u, pp.v, pt, norm);
+
+		glm::vec3 diffVec = pt - localPt;
+		if (!IsZeroVector(diffVec)) {
+			std::cout << "evalParams doesn't give same point" << std::endl;
+			return false;
+		}
+
+		float fVal = this->f(pt);
+		if (fVal < .98f) {
+			std::cout << "Not a surface point" << std::endl;
+			return false;
+		}
+
+		return true;
+	}
+
 	//TODO need to incorporate scaling
 	static void ClosestPointFramework(Superquadric &sq1, Superquadric &sq2, glm::vec3 &sq1closest, glm::vec3 &sq2closest, ParamPoint &p1, ParamPoint &p2) {
 		const float PI = glm::pi<float>();
@@ -905,25 +1180,31 @@ public:
 			glm::vec3 sq1ToSq2 = sq2.translation - sq1.translation;
 			glm::vec2 param1 = sq1.SurfaceParamValuesFromSurfacePoint(glm::normalize(sq1ToSq2));
 			glm::mat4 sq1RotMat = sq1.getRotationMatrix();
-			sq1closest = getGlobalCoordinates(glm::normalize(sq1ToSq2), sq1.translation, sq1RotMat);
+
+			//11/20/2016:
+			sq1ToSq2 = glm::vec3(glm::transpose(sq1RotMat) * glm::vec4(sq1ToSq2.x, sq1ToSq2.y, sq1ToSq2.z, 1.0f));
+			
+			sq1closest = ShapeUtils::getGlobalCoordinates(glm::normalize(sq1ToSq2), sq1.translation, sq1RotMat, sq1.scaling);
 
 			glm::vec3 sq2ToSq1 = sq1.translation - sq2.translation;
 			glm::vec2 param2 = sq2.SurfaceParamValuesFromSurfacePoint(glm::normalize(sq2ToSq1));
 			glm::mat4 sq2RotMat = sq2.getRotationMatrix();
-			sq2closest = getGlobalCoordinates(glm::normalize(sq2ToSq1), sq2.translation, sq2RotMat);
+
+			//11/20/2016:
+			sq2ToSq1 = glm::vec3(glm::transpose(sq2RotMat) * glm::vec4(sq2ToSq1.x, sq2ToSq1.y, sq2ToSq1.z, 1.0f));
+
+			sq2closest = ShapeUtils::getGlobalCoordinates(glm::normalize(sq2ToSq1), sq2.translation, sq2RotMat, sq2.scaling);
 
 			p1.pt = sq1closest;
 			p1.u = param1.x;
 			p1.v = param1.y;
 
-			glm::vec2 ok = sq1.SurfaceParamValuesFromNormal(glm::normalize(sq1ToSq2));
-			p1.u = ok.x;
-			p1.v = ok.y;
-			glm::vec2 ok2 = sq2.SurfaceParamValuesFromNormal(glm::normalize(sq2ToSq1));
-
 			p2.pt = sq2closest;
 			p2.u = param2.x;
 			p2.v = param2.y;
+
+			sq1.testPoint(p1);
+			sq2.testPoint(p2);
 
 			return;
 		}
@@ -1037,8 +1318,8 @@ public:
 			for (float u2 = uStart2; u2 < uEnd2; u2 += offset) {
 				for (float v2 = vStart2; v2 < vEnd2; v2 += offset) {
 
-					glm::vec3 pt = getGlobalCoordinates(sq2.PointsFromSurfaceParams(u2, v2), sq2.translation, sq2RotMat);
-					float distance = ShapeUtils::squaredDistance(getGlobalCoordinates(pt, sq2.translation, sq2RotMat), sq1closest);
+					glm::vec3 pt = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(u2, v2), sq2.translation, sq2RotMat, sq2.scaling);
+					float distance = ShapeUtils::squaredDistance(ShapeUtils::getGlobalCoordinates(pt, sq2.translation, sq2RotMat, sq2.scaling), sq1closest);
 					if (distance < closestDistance) {
 						closestDistance = distance;
 						closest2.pt = pt;
@@ -1096,6 +1377,59 @@ public:
 		sq2closest = closest2;
 	}
 
+	static void BruteForceTest1(Superquadric &sq1, Superquadric &sq2) {
+		
+		glm::vec3 sq1Tosq2Local = getLocalDirectionFrom1to2(sq1, sq2);
+		glm::vec3 sq2Tosq1Local = getLocalDirectionFrom1to2(sq2, sq1);
+
+
+	}
+
+	static glm::vec3 getLocalDirectionFrom1to2(Superquadric &sq1, Superquadric &sq2) {
+		glm::mat4 sq1Rot = sq1.getRotationMatrix();
+		glm::mat4 sq1RotInverse = glm::transpose(sq1Rot);
+
+		glm::vec3 sq1Tosq2 = sq2.translation - sq1.translation;
+		glm::vec3 sq1Tosq2Local = glm::vec3(sq1RotInverse * glm::vec4(sq1Tosq2.x, sq1Tosq2.y, sq1Tosq2.z, 1.0f));
+
+		return sq1Tosq2Local;
+	}
+
+	struct UVinterval {
+		float u0;
+		float v0;
+		float uF;
+		float vF;
+	};
+
+	/*
+	1 = x axis
+	2 = y axis
+	3 = z axis
+	4 = -x axis
+	5 = -y axis
+	6 = -z axis
+	*/
+	static int getOctanctForVector(glm::vec3 vec) {
+
+		//First check special cases where vec is aligned along an axis:
+
+
+		if (vec.x > 0.0f) {
+			if (vec.y > 0.0f) {
+
+			}
+		}
+	}
+
+	static UVinterval getSearchIntervalForOctant(int octant) {
+		//**********************************
+		//Will this actually be robust?? Counterexamples?
+		//**********************************
+
+
+	}
+
 	static void BruteForceSearch(Superquadric &sq1, Superquadric &sq2, float uStart1, float uStart2, float uEnd1, float uEnd2,
 		float vStart1, float vStart2, float vEnd1, float vEnd2, float offset, float closestDistance,
 		ParamPoint &closest1, ParamPoint &closest2) {
@@ -1114,7 +1448,7 @@ public:
 			glm::vec3 pt = glm::vec3();
 			for (float v1 = vStart1; v1 < vEnd1; v1 += offset) {
 				pt = sq1.PointsFromSurfaceParams(u1, v1);
-				ParamPoint pp = { u1, v1, getGlobalCoordinates(pt, sq1.translation, sq1RotMat) };
+				ParamPoint pp = { u1, v1, ShapeUtils::getGlobalCoordinates(pt, sq1.translation, sq1RotMat, sq1.scaling) };
 				points1.push_back(pp);
 			}
 		}
@@ -1124,7 +1458,7 @@ public:
 			glm::vec3 pt = glm::vec3();
 			for (float v2 = vStart2; v2 < vEnd2; v2 += offset) {
 				pt = sq2.PointsFromSurfaceParams(u2, v2);
-				ParamPoint pp = { u2, v2, getGlobalCoordinates(pt, sq2.translation, sq2RotMat) };
+				ParamPoint pp = { u2, v2, ShapeUtils::getGlobalCoordinates(pt, sq2.translation, sq2RotMat, sq1.scaling) };
 				points2.push_back(pp);
 			}
 		}
@@ -1163,8 +1497,8 @@ public:
 			ParamPoint sq1pp = *it1;
 			for (std::vector<ParamPoint>::iterator it2 = sq2pts.begin(); it2 != sq2pts.end(); it2++) {
 				ParamPoint sq2pp = *it2;
-				float distance = ShapeUtils::squaredDistance(getGlobalCoordinates(sq1pp.pt, sq1.translation, sq1Rot),
-					getGlobalCoordinates(sq2pp.pt, sq2.translation, sq2Rot));
+				float distance = ShapeUtils::squaredDistance(ShapeUtils::getGlobalCoordinates(sq1pp.pt, sq1.translation, sq1Rot, sq1.scaling),
+					ShapeUtils::getGlobalCoordinates(sq2pp.pt, sq2.translation, sq2Rot, sq2.scaling));
 				if (distance < closestDistance) {
 					closest1 = *it1;
 					closest2 = *it2;
@@ -1173,15 +1507,15 @@ public:
 			}
 		}
 
-		sq1closest = { closest1.u, closest1.v, getGlobalCoordinates(closest1.pt, sq1.translation, sq1Rot) };
-		sq2closest = { closest2.u, closest2.v, getGlobalCoordinates(closest2.pt, sq2.translation, sq2Rot) };
+		sq1closest = { closest1.u, closest1.v, ShapeUtils::getGlobalCoordinates(closest1.pt, sq1.translation, sq1Rot, sq1.scaling) };
+		sq2closest = { closest2.u, closest2.v, ShapeUtils::getGlobalCoordinates(closest2.pt, sq2.translation, sq2Rot, sq2.scaling) };
 	}
 
 	static bool testIntersection(Superquadric &sq1, Superquadric &sq2, glm::vec3 &sq1pt, glm::vec3 &sq2pt) {
 
 		//glm::vec3 pt = applyRotation(sq1pt, glm::transpose(sq1.getRotationMatrix()));
 		glm::mat4 sq2Rot = sq2.getRotationMatrix();
-		glm::vec3 pt1InSq2ModelSpace = getLocalCoordinates(sq1pt, sq2.translation, sq2Rot);
+		glm::vec3 pt1InSq2ModelSpace = ShapeUtils::getLocalCoordinates(sq1pt, sq2.translation, sq2Rot, sq2.scaling);
 
 		if (sq2.f(pt1InSq2ModelSpace) < 1.0f) {
 			float f = sq2.f(pt1InSq2ModelSpace);
@@ -1516,8 +1850,8 @@ public:
 
 			glm::vec3 localp = sq1.PointsFromSurfaceParams(xi[0], xi[1]);
 			glm::vec3 localq = sq2.PointsFromSurfaceParams(xi[2], xi[3]);
-			p = getGlobalCoordinates(localp, sq1.translation, sq1Rot);
-			q = getGlobalCoordinates(localq, sq2.translation, sq2Rot);
+			p = ShapeUtils::getGlobalCoordinates(localp, sq1.translation, sq1Rot, sq1.scaling);
+			q = ShapeUtils::getGlobalCoordinates(localq, sq2.translation, sq2Rot, sq2.scaling);
 
 			glm::vec3 gradient1 = sq1.unitnormal(localp);
 			glm::vec3 gradient2 = sq2.unitnormal(localq);
@@ -1678,10 +2012,10 @@ public:
 		//Return the 3d points in their world space coordinates
 
 		sq1closest = sq1.PointsFromSurfaceParams(xi[0], xi[1]);
-		sq1closest = getGlobalCoordinates(sq1closest, sq1.translation, sq1Rot);
+		sq1closest = ShapeUtils::getGlobalCoordinates(sq1closest, sq1.translation, sq1Rot, sq1.scaling);
 
 		sq2closest = sq2.PointsFromSurfaceParams(xi[2], xi[3]);
-		sq2closest = getGlobalCoordinates(sq2closest, sq2.translation, sq2Rot);
+		sq2closest = ShapeUtils::getGlobalCoordinates(sq2closest, sq2.translation, sq2Rot, sq2.scaling);
 
 		pp1.u = xi[0];
 		pp1.v = xi[1];
@@ -1839,12 +2173,12 @@ public:
 
 						//p1 is current point, p2 is positively adjusted, p3 is negatively adjusted 
 						glm::vec3 p1, p2, p3;
-						p1 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1]), sq1.translation, sq1Rot);
-						p2 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1] + sq1.adjustment), sq1.translation, sq1Rot);
-						p3 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1] - sq1.adjustment), sq1.translation, sq1Rot);
+						p1 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1]), sq1.translation, sq1Rot, sq1.scaling);
+						p2 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1] + sq1.adjustment), sq1.translation, sq1Rot, sq1.scaling);
+						p3 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1] - sq1.adjustment), sq1.translation, sq1Rot, sq1.scaling);
 
 						//Current point on other surface to use for evaluating closeness
-						p = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot);
+						p = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot, sq2.scaling);
 
 						int result = findClosest(p1, p2, p3, p);
 
@@ -1914,12 +2248,12 @@ public:
 
 						//p1 is current point, p2 is positively adjusted, p3 is negatively adjusted 
 						glm::vec3 p1, p2, p3;
-						p1 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1]), sq1.translation, sq1Rot);
-						p2 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] + sq1.adjustment, xi[1]), sq1.translation, sq1Rot);
-						p3 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] - sq1.adjustment, xi[1]), sq1.translation, sq1Rot);
+						p1 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1]), sq1.translation, sq1Rot, sq1.scaling);
+						p2 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] + sq1.adjustment, xi[1]), sq1.translation, sq1Rot, sq1.scaling);
+						p3 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] - sq1.adjustment, xi[1]), sq1.translation, sq1Rot, sq1.scaling);
 
 						//Current point on other surface to use for evaluating closeness
-						p = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot);
+						p = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot, sq2.scaling);
 
 						int result = findClosest(p1, p2, p3, p);
 
@@ -1986,12 +2320,12 @@ public:
 
 						//p1 is current point, p2 is positively adjusted, p3 is negatively adjusted 
 						glm::vec3 p1, p2, p3;
-						p1 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1]), sq1.translation, sq1Rot);
-						p2 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] + sq1.adjustment, xi[1]), sq1.translation, sq1Rot);
-						p3 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] - sq1.adjustment, xi[1]), sq1.translation, sq1Rot);
+						p1 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1]), sq1.translation, sq1Rot, sq1.scaling);
+						p2 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] + sq1.adjustment, xi[1]), sq1.translation, sq1Rot, sq1.scaling);
+						p3 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] - sq1.adjustment, xi[1]), sq1.translation, sq1Rot, sq1.scaling);
 
 						//Current point on other surface to use for evaluating closeness
-						p = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot);
+						p = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot, sq2.scaling);
 
 						int result = findClosest(p1, p2, p3, p);
 
@@ -2060,12 +2394,12 @@ public:
 
 						//p1 is current point, p2 is positively adjusted, p3 is negatively adjusted 
 						glm::vec3 p1, p2, p3;
-						p1 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1]), sq1.translation, sq1Rot);
-						p2 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] + sq1.adjustment, xi[1]), sq1.translation, sq1Rot);
-						p3 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] - sq1.adjustment, xi[1]), sq1.translation, sq1Rot);
+						p1 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1]), sq1.translation, sq1Rot, sq1.scaling);
+						p2 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] + sq1.adjustment, xi[1]), sq1.translation, sq1Rot, sq1.scaling);
+						p3 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0] - sq1.adjustment, xi[1]), sq1.translation, sq1Rot, sq1.scaling);
 
 						//Current point on other surface to use for evaluating closeness
-						p = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot);
+						p = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot, sq2.scaling);
 
 						int result = findClosest(p1, p2, p3, p);
 
@@ -2140,12 +2474,12 @@ public:
 
 						//p1 is current point, p2 is positively adjusted, p3 is negatively adjusted 
 						glm::vec3 p1, p2, p3;
-						p1 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1]), sq1.translation, sq1Rot);
-						p2 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1] + sq1.adjustment), sq1.translation, sq1Rot);
-						p3 = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1] - sq1.adjustment), sq1.translation, sq1Rot);
+						p1 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1]), sq1.translation, sq1Rot, sq1.scaling);
+						p2 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1] + sq1.adjustment), sq1.translation, sq1Rot, sq1.scaling);
+						p3 = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[0], xi[1] - sq1.adjustment), sq1.translation, sq1Rot, sq1.scaling);
 
 						//Current point on other surface to use for evaluating closeness
-						p = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot);
+						p = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot, sq2.scaling);
 
 						int result = findClosest(p1, p2, p3, p);
 
@@ -2245,12 +2579,12 @@ public:
 
 						//p1 is current point, p2 is positively adjusted, p3 is negatively adjusted 
 						glm::vec3 p1, p2, p3;
-						p1 = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot);
-						p2 = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3] + sq2.adjustment), sq2.translation, sq2Rot);
-						p3 = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3] - sq2.adjustment), sq2.translation, sq2Rot);
+						p1 = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot, sq2.scaling);
+						p2 = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3] + sq2.adjustment), sq2.translation, sq2Rot, sq2.scaling);
+						p3 = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3] - sq2.adjustment), sq2.translation, sq2Rot, sq2.scaling);
 
 						//Current point on other surface to use for evaluating closeness
-						p = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[1], xi[2]), sq1.translation, sq1Rot);
+						p = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[1], xi[2]), sq1.translation, sq1Rot, sq1.scaling);
 
 						int result = findClosest(p1, p2, p3, p);
 
@@ -2318,12 +2652,12 @@ public:
 
 						//p1 is current point, p2 is positively adjusted, p3 is negatively adjusted 
 						glm::vec3 p1, p2, p3;
-						p1 = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot);
-						p2 = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2] + sq2.adjustment, xi[3]), sq2.translation, sq2Rot);
-						p3 = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2] - sq2.adjustment, xi[3]), sq2.translation, sq2Rot);
+						p1 = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot, sq2.scaling);
+						p2 = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2] + sq2.adjustment, xi[3]), sq2.translation, sq2Rot, sq2.scaling);
+						p3 = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2] - sq2.adjustment, xi[3]), sq2.translation, sq2Rot, sq2.scaling);
 
 						//Current point on other surface to use for evaluating closeness
-						p = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[1], xi[2]), sq1.translation, sq1Rot);
+						p = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[1], xi[2]), sq1.translation, sq1Rot, sq1.scaling);
 
 						int result = findClosest(p1, p2, p3, p);
 
@@ -2391,12 +2725,12 @@ public:
 
 						//p1 is current point, p2 is positively adjusted, p3 is negatively adjusted 
 						glm::vec3 p1, p2, p3;
-						p1 = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot);
-						p2 = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2] + sq2.adjustment, xi[3]), sq2.translation, sq2Rot);
-						p3 = getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2] - sq2.adjustment, xi[3]), sq2.translation, sq2Rot);
+						p1 = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2], xi[3]), sq2.translation, sq2Rot, sq2.scaling);
+						p2 = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2] + sq2.adjustment, xi[3]), sq2.translation, sq2Rot, sq2.scaling);
+						p3 = ShapeUtils::getGlobalCoordinates(sq2.PointsFromSurfaceParams(xi[2] - sq2.adjustment, xi[3]), sq2.translation, sq2Rot, sq2.scaling);
 
 						//Current point on other surface to use for evaluating closeness
-						p = getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[1], xi[2]), sq1.translation, sq1Rot);
+						p = ShapeUtils::getGlobalCoordinates(sq1.PointsFromSurfaceParams(xi[1], xi[2]), sq1.translation, sq1Rot, sq1.scaling);
 
 						int result = findClosest(p1, p2, p3, p);
 
@@ -2465,8 +2799,8 @@ public:
 
 			glm::vec3 localp = sq1.PointsFromSurfaceParams(xi[0], xi[1]);
 			glm::vec3 localq = sq2.PointsFromSurfaceParams(xi[2], xi[3]);
-			p = getGlobalCoordinates(localp, sq1.translation, sq1Rot);
-			q = getGlobalCoordinates(localq, sq2.translation, sq2Rot);
+			p = ShapeUtils::getGlobalCoordinates(localp, sq1.translation, sq1Rot, sq1.scaling);
+			q = ShapeUtils::getGlobalCoordinates(localq, sq2.translation, sq2Rot, sq2.scaling);
 
 			glm::vec3 gradient1 = sq1.unitnormal(localp);
 			glm::vec3 gradient2 = sq2.unitnormal(localq);
@@ -2733,10 +3067,10 @@ public:
 		//Return the 3d points in their world space coordinates
 
 		sq1closest = sq1.PointsFromSurfaceParams(xi[0], xi[1]);
-		sq1closest = getGlobalCoordinates(sq1closest, sq1.translation, sq1Rot);
+		sq1closest = ShapeUtils::getGlobalCoordinates(sq1closest, sq1.translation, sq1Rot, sq1.scaling);
 
 		sq2closest = sq2.PointsFromSurfaceParams(xi[2], xi[3]);
-		sq2closest = getGlobalCoordinates(sq2closest, sq2.translation, sq2Rot);
+		sq2closest = ShapeUtils::getGlobalCoordinates(sq2closest, sq2.translation, sq2Rot, sq2.scaling);
 
 		pp1.u = xi[0];
 		pp1.v = xi[1];
@@ -2767,7 +3101,7 @@ public:
 			prevClosest = closestPt;
 
 			*closestParamVariable = *closestParamVariable + update;
-			closestPt = getGlobalCoordinates(sq.PointsFromSurfaceParams(*closestParamU, *closestParamV), sq.translation, rotMat);
+			closestPt = ShapeUtils::getGlobalCoordinates(sq.PointsFromSurfaceParams(*closestParamU, *closestParamV), sq.translation, rotMat, sq.scaling);
 			dist = ShapeUtils::squaredDistance(closestPt, refPt);
 		}
 		closestPt = prevClosest;
@@ -2866,8 +3200,8 @@ public:
 		// q is the point on sq2
 		p = sq1.PointsFromSurfaceParams(xi[0], xi[1]);
 		q = sq2.PointsFromSurfaceParams(xi[2], xi[3]);
-		p = getGlobalCoordinates(p, sq1.translation, sq1Rot);
-		q = getGlobalCoordinates(q, sq2.translation, sq2Rot);
+		p = ShapeUtils::getGlobalCoordinates(p, sq1.translation, sq1Rot, sq1.scaling);
+		q = ShapeUtils::getGlobalCoordinates(q, sq2.translation, sq2Rot, sq2.scaling);
 
 		sigu = sq1.dSigmaDu(xi[0], xi[1]);
 		sigv = sq1.dSigmaDv(xi[0], xi[1]);
@@ -2917,7 +3251,8 @@ public:
 
 		// u = sin^(-1) ( e ^ ( ln(z/a3) / e1) )
 		float sign = MathUtils::sgnf(pt.z);
-		u = sign * asin(expf(logf(MathUtils::abs(pt.z) / a3) / e1));        //logf = ln
+		//u = sign * asin(expf(logf(MathUtils::abs(pt.z) / a3) / e1));        //logf = ln
+		u = asin(sign * expf(logf(MathUtils::abs(pt.z) / a3) / e1));
 
 		if (MathUtils::abs(u + piOver2) < SQ_EPSILON) {
 			//u = -pi/2, v can be anything
@@ -2931,7 +3266,7 @@ public:
 
 			// v = arccos( e ^ ( ln (x/a1 * cos(u)^e1) / e2))
 			float cosU = MathUtils::cos(u);
-			float logDenom = a1 * powf(cosU, e1);
+			float logDenom = a1 * powf(MathUtils::abs(cosU), e1);
 			float logParam = ShapeUtils::absf(pt.x) / logDenom;
 			float log = logf(logParam);
 
@@ -2947,6 +3282,9 @@ public:
 			if (pt.x < 0.0f) {
 				ex *= -1.0f;
 			}
+			if (cosU < 0.0f) {
+				ex *= -1.0f;
+			}
 
 			v = acos(ex); //returns something in [0, pi]
 
@@ -2956,6 +3294,10 @@ public:
 			bool y = pt.y > 0.0f;
 			if (x!=y) {
 				v *= -1.0f;
+			}
+
+			if (isnan(v)) {
+				std::cout << "V is nan" << std::endl;
 			}
 
 			//v = pi gives same point as v = -pi
@@ -3013,7 +3355,7 @@ public:
 
 		float fstVal = MathUtils::sgnf(cosY) * (1.0f / a1);
 		float sndVal = powf(MathUtils::abs(cosY), 2.0f - e2);
-		float lstVal = powf(MathUtils::abs(cosX), 2.0f - e1);
+		float lstVal = MathUtils::sgnf(cosX) * powf(MathUtils::abs(cosX), 2.0f - e1);
 		normal.x = fstVal * sndVal * lstVal;
 
 		fstVal = MathUtils::sgnf(sinY) * (1.0f / a2);
@@ -3053,7 +3395,7 @@ public:
 		float sum = powf(first + secnd, e1 / e2);
 		float third = powf(powf(z / a3, 2.0f), (1.0f / e2));
 
-		result = first + third;
+		result = sum + third;
 
 
 		//result = powf(powf(x / a1, 2.0f / e1) +
@@ -3198,18 +3540,18 @@ public:
 		}
 	}
 
-	static glm::vec3 getLocalCoordinates(glm::vec3 globalCoords, glm::vec3 &translation, glm::mat4 &rotation) {
-		//  Translate back to origin, then un-rotate to standard orientation
-		glm::vec3 local = (-1.0f * translation) + globalCoords;
-		glm::mat4 transpose = glm::transpose(rotation);
-		return applyRotation(local, transpose);   //Transpose of rotation matrix is its inverse since orthogonal
-	}
+	//static glm::vec3 getLocalCoordinates(glm::vec3 globalCoords, glm::vec3 &translation, glm::mat4 &rotation) {
+	//	//  Translate back to origin, then un-rotate to standard orientation
+	//	glm::vec3 local = (-1.0f * translation) + globalCoords;
+	//	glm::mat4 transpose = glm::transpose(rotation);
+	//	return applyRotation(local, transpose);   //Transpose of rotation matrix is its inverse since orthogonal
+	//}
 
-	static glm::vec3 getGlobalCoordinates(glm::vec3 localCoords, glm::vec3 &translation, glm::mat4 &rotation) {
-		//  Rotate pt then translate it:
-		glm::vec3 global = applyRotation(localCoords, rotation);
-		return global + translation;
-	}
+	//static glm::vec3 getGlobalCoordinates(glm::vec3 localCoords, glm::vec3 &translation, glm::mat4 &rotation) {
+	//	//  Rotate pt then translate it:
+	//	glm::vec3 global = applyRotation(localCoords, rotation);
+	//	return global + translation;
+	//}
 
 	static glm::vec3 applyRotation(glm::vec3 &pt, glm::mat4 &rotation) {
 		return glm::vec3(rotation * glm::vec4(pt.x, pt.y, pt.z, 1.0f));
@@ -3245,8 +3587,8 @@ public:
 		float d, twoovere1, first, second;
 		d = e1 / e2;
 		twoovere1 = 2.0f / e1;
-		first = d * powf((powf(((1.0f / a1) * x), twoovere1) + powf(((1.0f / a2) * y), twoovere1)), d - 1.0f);
-		second = powf(1.0f / a1, twoovere1) * (twoovere1 * powf(x, twoovere1 - 1.0f));
+		first = d * MathUtils::sgnf(x) * powf((powf(((1.0f / a1) * MathUtils::abs(x)), twoovere1) + MathUtils::sgnf(y) * powf(((1.0f / a2) * MathUtils::abs(y)), twoovere1)), d - 1.0f);
+		second = powf(1.0f / a1, twoovere1) * (MathUtils::sgnf(x) * twoovere1 * powf(MathUtils::abs(x), twoovere1 - 1.0f));
 		return first * second;
 	}
 
@@ -3254,8 +3596,11 @@ public:
 		float d, twoovere1, first, second;
 		d = e1 / e2;
 		twoovere1 = 2.0f / e1;
-		first = d * powf((powf(((1.0f / a1) * x), twoovere1) + powf(((1.0f / a2) * y), twoovere1)), d - 1.0f);
-		second = powf(1.0f / a2, twoovere1) * (twoovere1 * powf(y, twoovere1 - 1.0f));
+		first = d * MathUtils::sgnf(x) * powf((powf(((1.0f / a1) * MathUtils::abs(x)), twoovere1) + MathUtils::sgnf(y) * powf(((1.0f / a2) * MathUtils::abs(y)), twoovere1)), d - 1.0f);
+		second = powf(1.0f / a2, twoovere1) * (MathUtils::sgnf(y) * twoovere1 * powf(MathUtils::abs(y), twoovere1 - 1.0f));
+		if (isnan(first) || isnan(second)) {
+			std::cout << "fY is nan" << std::endl;
+		}
 		return first * second;
 	}
 
@@ -3263,22 +3608,22 @@ public:
 		float twoovere2;
 		twoovere2 = 2.0f / e2;
 		float term1 = powf((1.0f / a3), twoovere2);
-		float term3 = myPowf(z, twoovere2 - 1.0f);
+		float term3 = MathUtils::sgnf(z) * powf(MathUtils::abs(z), twoovere2 - 1.0f);
 		return term1 * twoovere2 * term3;
 	}
 
-	static float myPowf(float base, float exp) {
-		if (base < 0.0f) {
-			if (MathUtils::abs(exp - roundf(exp)) < .01f) {
-				if (MathUtils::abs(exp / 2.0f - roundf(exp / 2.0f)) < .01f) {
-					//even exponent
-					return powf(MathUtils::abs(base), exp);
-				}
-			}
-			return -1.0f * powf(MathUtils::abs(base), exp);
-		}
-		return powf(base, exp);
-	}
+	//static float myPowf(float base, float exp) {
+	//	if (base < 0.0f) {
+	//		if (MathUtils::abs(exp - roundf(exp)) < .01f) {
+	//			if (MathUtils::abs(exp / 2.0f - roundf(exp / 2.0f)) < .01f) {
+	//				//even exponent
+	//				return powf(MathUtils::abs(base), exp);
+	//			}
+	//		}
+	//		return -1.0f * powf(MathUtils::abs(base), exp);
+	//	}
+	//	return powf(base, exp);
+	//}
 
 	/*glm::vec3 gradient(float x, float y, float z) {
 	float d, twoovere2, twoovere1, first, second;

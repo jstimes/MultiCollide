@@ -1,12 +1,39 @@
 #pragma once
 
-#include "Shape.h"
+#include "ShapeSeparatingAxis.h"
 
-class Cube : public Shape {
+class Cube : public ShapeSeparatingAxis {
 
 public:
 
 	virtual void InitVAOandVBO(Shader &shader) override {
+
+		glm::vec3 c1(.5f, -.5f, .5f);   //bottom right fwd
+		glm::vec3 c2(.5f, -.5f, -.5f);  //bottom right back
+		glm::vec3 c3(-.5f, -.5f, -.5f); //bottom left back
+		glm::vec3 c4(-.5f, -.5f, .5f);  //bototm left fwd
+
+		glm::vec3 c5(.5f, .5f, .5f);   //top right fwd
+		glm::vec3 c6(.5f, .5f, -.5f);  //top right back
+		glm::vec3 c7(-.5f, .5f, -.5f); //top left back
+		glm::vec3 c8(-.5f, .5f, .5f);  //top left fwd
+
+		corners.push_back(c1);
+		corners.push_back(c2);
+		corners.push_back(c3);
+		corners.push_back(c4);
+		corners.push_back(c5);
+		corners.push_back(c6);
+		corners.push_back(c7);
+		corners.push_back(c8);
+
+		glm::vec3 n1(1.0f, 0.0f, 0.0f);
+		glm::vec3 n2(0.0f, 1.0f, 0.0f);
+		glm::vec3 n3(0.0f, 0.0f, 1.0f); 
+
+		normals.push_back(n1);
+		normals.push_back(n2);
+		normals.push_back(n3);
 
 		GLfloat vertices[] = {
 			-0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,

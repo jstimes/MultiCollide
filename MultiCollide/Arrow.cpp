@@ -21,6 +21,7 @@ void Arrow::Draw(Shader &shader, float arrowLength, float headScaling, glm::vec3
 	glm::mat4 lineModel = transAndRotMat * lineScaling;
 
 	glm::mat4 headModel = transAndRotMat * glm::translate(MathUtils::I4, glm::vec3(arrowLength, 0.0f, 0.0f)) * glm::scale(MathUtils::I4, glm::vec3(headScaling * defaultArrowHeadScaling));
+	//glm::mat4 headModel = transAndRotMat * glm::translate(MathUtils::I4, glm::vec3(arrowLength, 0.0f, 0.0f)) * glm::scale(MathUtils::I4, glm::vec3(defaultArrowHeadScaling));
 
 	arrowObject.Draw(shader, headModel, lineModel);
 }
