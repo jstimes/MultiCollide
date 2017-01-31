@@ -5,14 +5,20 @@ var timeout = 80;
 var ig;
 var vg;
 
-function drawVisualizations(impulsePtsArr, velocityPtsArr) {
+function drawImpulse(impulsePtsArr) {
 	ig = new ImpulseGraph(impulsePtsArr);
+}
+
+function drawVelocity(velocityPtsArr){
 	vg = new VelocityGraph(velocityPtsArr);
 }
 
 function stopVisualizations(){
-	ig.stop();
-	vg.stop();
+	if(ig)
+		ig.stop();
+	
+	if(vg)
+		vg.stop();
 }
 
 function ImpulseGraph(impulsePtsArr) {

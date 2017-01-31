@@ -160,6 +160,8 @@ $(function() {
 			$("#shapeAccordion" + shapeName).remove();
 			$("#shapeHeader" + shapeName).remove();
 			_free(namePtr);
+			
+			$('#shapesAccordion').refresh();
 		});
 		
 		$("#" + sectionId + " .duplicateShape").click(function() {
@@ -432,7 +434,6 @@ $(function() {
 			//Clicked stop:
 			if(isImpulseMode){
 				isImpulseMode = false;
-				_continueImpulseOnClick();
 				toggleImpulseControls();
 			}
 			
@@ -639,10 +640,12 @@ var sceneShapesOpen = true;
 		//console.log("width: " + $('#impulseControls').width());
 		//window.dispatchEvent(new Event('resize'));
 		
-		$.when($("#graphsDiv").hide("slide", { direction: "right" }, 1000)).then(function() {
-			$("#sceneShapesDiv").show("slide", { direction: "right" }, 1000);
+		// $.when($("#graphsDiv").hide("slide", { direction: "right" }, 1000)).then(function() {
+			// $("#sceneShapesDiv").show("slide", { direction: "right" }, 1000);
 			
-		});
+		// });
+		
+		$("#impulseContinueBtn").click();
 	}
     else {
 		// console.log("window ht: " + window.innerHeight);
@@ -676,14 +679,14 @@ var sceneShapesOpen = true;
 		//console.log("IC width: " + $('#impulseControls').width());
 		
 		velocityPts = [];
-		while(_isMoreVelocityPts()){
+		while(showVelocityGraph && _isMoreVelocityPts()){
 			velocityPts.push(_getNextVelocityPtX());
 			velocityPts.push(_getNextVelocityPtY());
 			velocityPts.push(_getNextVelocityPtZ());
 		}
 		
 		impulsePts = [];
-		while(_isMoreImpulsePts()){
+		while(showImpulseGraph && _isMoreImpulsePts()){
 			impulsePts.push(_getNextImpulsePtX());
 			impulsePts.push(_getNextImpulsePtY());
 			impulsePts.push(_getNextImpulsePtZ());
@@ -715,14 +718,21 @@ var sceneShapesOpen = true;
 		
 		//TODO if 2D don't output z's
 		var html = "<h4 id='impactVisualizations'>A Collision Occurred</h4>" + 
-			"<div id='graphsContainer' height='400px'>" + 
-				"<p class='graphLabel'>Impulse Accumulation</p>" + 
-				"<div id='graph1'></div><br><br>" + 
+			"<div id='graphsContainer' height='400px'>";
+			
+			if(showImpulseGraph){
+				html += "<p class='graphLabel'>Impulse Accumulation</p>" + 
+				"<div id='graph1'></div><br><br>";
+			}
+			
+			if(showVelocityGraph){
+				html += "<p class='graphLabel'>Sliding Velocity Curve (Hodograph)</p>" +
+				"<div id='graph2'></div>";
+			}
 				
-				"<p class='graphLabel'>Sliding Velocity Curve (Hodograph)</p>" +
-				"<div id='graph2'></div>" +
 				
-				"<p>Total Impulse: <br>" + 
+				
+			html += "<p>Total Impulse: <br>" + 
 				"(" + IendX + ", " + IendY + ", " + IendZ + ")<br>" + 
 				
 				"<p>End of Sliding at: " + endOfSliding + "</p><br>" +
@@ -755,15 +765,30 @@ var sceneShapesOpen = true;
 		
 		$("#impulseRestartBtn").click(function() {
 			stopVisualizations();
-			$("#graph1").empty();
+			if(showImpulseGraph) {
+				$("#graph1").empty();
+			}
+			if(showVelocityGraph){
+				$("#graph2").empty();
+			}
 			$("#graph2").empty();
-			drawVisualizations(impulsePts, velocityPts);
+			if(showImpulseGraph){
+				drawImpulse(impulsePts);
+			}
+			if(showVelocityGraph) {
+				drawVelocity(velocityPts);
+			}
 		});
 		
 		var showGraph = function() {
 			var indexToOpen = accord.children('div').length - 1;
 			accord.accordion('option', 'active', indexToOpen);
-			drawVisualizations(impulsePts, velocityPts);
+			if(showImpulseGraph){
+				drawImpulse(impulsePts);
+			}
+			if(showVelocityGraph) {
+				drawVelocity(velocityPts);
+			}
 		};
 		
 		if(!sceneShapesOpen){
@@ -894,7 +919,7 @@ var sceneShapesOpen = true;
 	showImpulseGraph = (localStorage.getItem('showImpulse') === 'true');
 	$("#showImpulse").prop('checked', showImpulseGraph);
 	
-	var showVelocityGraph = (localStorage.getItem('showVelocity') === 'true');
+	showVelocityGraph = (localStorage.getItem('showVelocity') === 'true');
 	$("#showVelocity").prop('checked', showVelocityGraph);
 	checkIfShouldShowGraphs();
  }
