@@ -624,6 +624,8 @@ var sceneShapesOpen = true;
 	});
  }
  
+ var pickedShapeIndex = -1;
+ 
  var showImpulseGraph = false;
  var showVelocityGraph = false;
  var isImpulseMode = false;
@@ -797,6 +799,10 @@ var sceneShapesOpen = true;
 		*/
 		
 	}
+ }
+ 
+ function openPickedShapeInfo() {
+	 $('#shapesAccordion').accordion('option', 'active', pickedShapeIndex);
  }
  
  function round3(decimal) {
