@@ -140,7 +140,7 @@ $(function() {
 			
 			html += "speed (deg/s): <input style='width:50px' type='text' class='angularvelocityspeed shapeData " + shapeName + "'><br><br>" +
 			"<input type='button' class='removeShape' value='Remove Shape'>" +
-			"<input type='button' class='duplicateShape' value='Add Duplicate'>" +
+			"<!--input type='button' class='duplicateShape' value='Add Duplicate'-->" +
 			"</div>" + 
 			
 			"</div></div>";
@@ -238,9 +238,9 @@ $(function() {
 			} else if(dataElement === "angularvelocityx"){
 				_setShapeAngularVelocityX(index, value);
 			} else if(dataElement === "angularvelocityy"){
-				_setShapeAngularVelocityX(index, value);
+				_setShapeAngularVelocityY(index, value);
 			} else if(dataElement === "angularvelocityz"){
-				_setShapeAngularVelocityX(index, value);
+				_setShapeAngularVelocityZ(index, value);
 			} else if(dataElement === "angularvelocityspeed"){
 				//Assume user enters speed in degrees/sec, convert to rads/s 
 				value *= (Math.PI / 180);
@@ -369,9 +369,9 @@ $(function() {
 		addShape();
 	});
 	
-	$("#meshFileUpload").change(function() {
-		if(this.files != null && this.files.length > 0){
-			var fileName = this.files[0].name;
+	$("#submitMeshFile").change(function() {
+		if($("#meshFileUpload").files != null && $("#meshFileUpload").files.length > 0){
+			var fileName = $("#meshFileUpload").files[0].name;
 			var reader = new FileReader ();
 			reader.onloadend = function (ev) { 
 				
@@ -387,7 +387,7 @@ $(function() {
 				meshDialog.dialog("close");
 			
 			};
-			reader.readAsText (this.files[0]);
+			reader.readAsText ($("#meshFileUpload").files[0]);
 		}
 	});
 	
@@ -895,6 +895,8 @@ var sceneShapesOpen = true;
 		
 		using2D = true;
 	 }
+	 
+	 $("#reset").click();
  }
  
  function initSettings() {
