@@ -5,12 +5,108 @@ var timeout = 80;
 var ig;
 var vg;
 
-function drawImpulse(impulsePtsArr) {
-	ig = new ImpulseGraph(impulsePtsArr);
+function drawImpulse(impulsePtsArr, endOfCompression, endOfSliding) {
+	ig = new ImpulseGraph(impulsePtsArr, endOfCompression, endOfSliding);
 }
 
-function drawVelocity(velocityPtsArr){
-	vg = new VelocityGraph(velocityPtsArr);
+function drawVelocity(velocityPtsArr, endOfCompression, endOfSliding){
+	//vg = new VelocityGraph(velocityPtsArr);
+	var ctx = $("#graph2");
+	
+	var max = 0;
+    var min = 0;
+  
+	//var xPts = [];
+	//var yPts = [];
+	var all_data = [];
+	var compressionPt = [];
+	var slidingPt = [];
+	//alert("Num vel. pts: " + velocityPtsArr.length);
+    for(var p=0; p<velocityPtsArr.length; p +=3){
+		//xPts.push(velocityPtsArr[p]);
+		//yPts.push(velocityPtsArr[p+1]);
+		
+		var pt = {x: velocityPtsArr[p], y: velocityPtsArr[p+1]};
+		all_data.push(pt);
+		
+		if(p/3 == endOfCompression){
+			compressionPt.push(pt);
+		}
+		
+		if(p/3 == endOfSliding){
+			slidingPt.push(pt);
+		}
+		
+		// if(this.pts[p] > max){
+			// max = this.pts[p];
+		// }
+		// if(this.pts[p] < min){
+			// min = this.pts[p];
+		// }
+		
+		// if(this.pts[p+1] > max){
+			// max = this.pts[p+1];
+		// }
+		// if(this.pts[p+1] < min){
+			// min = this.pts[p+1];
+		// }
+    }
+	
+    //max += Math.abs(max * .1);
+    //min -= Math.abs(min * .1);
+	
+	var cur = 0;
+	var curData = [ all_data[cur++] ];
+	
+	var myLineChart = new Chart(ctx, {
+		type: 'line',
+		data: {
+			datasets: [{
+				//label: 'Sliding Velocity Curve (Hodograph)',
+				data: curData,
+				pointBackgroundColor: "#B00000",
+			},
+			{
+				data: slidingPt,
+				pointBackgroundColor: "#00FF00"
+			},
+			{
+				data: compressionPt,
+				pointBackgroundColor: "#FF0000"
+			}]
+		},
+		
+		options: {
+			//animation: {
+			//	easing: 'linear',
+			//	onComplete: function () {
+			//		
+			//	},
+			//},
+			//easing: 'linear',
+			scales: {
+				xAxes: [{
+					type: 'linear',
+					position: 'bottom'
+				}]
+			},
+			legend: {
+				display: false 
+			}
+		}
+	});
+	
+	var grow = function() {
+		//console.log("On complete called");
+		if(cur < all_data.length){
+			//console.log("Ading pt");
+			myLineChart.data.datasets[0].data.push(all_data[cur++]);
+			myLineChart.reset();
+			myLineChart.update();
+			setTimeout(grow, 100);
+		}
+	};
+	setTimeout(grow, 100);
 }
 
 function stopVisualizations(){
@@ -21,8 +117,10 @@ function stopVisualizations(){
 		vg.stop();
 }
 
-function ImpulseGraph(impulsePtsArr) {
+function ImpulseGraph(impulsePtsArr, endOfCompression, endOfSliding) {
 	
+	this.endOfCompression = endOfCompression;
+	this.endOfSliding = endOfSliding;
 	this.pts = impulsePtsArr;
 	this.graph = null;
 	this.data = null;
@@ -41,7 +139,16 @@ ImpulseGraph.prototype.grow = function() {
 		return;
 	}
 	
-	var pt = {x: this.pts[this.curPt], y: this.pts[this.urPt+1], z: this.pts[this.curPt+2]};
+	var pt = {x: this.pts[this.curPt], y: this.pts[this.curPt+1], z: this.pts[this.curPt+2]};
+	
+	if(this.curPt / 3 == this.endOfCompression){
+		pt.style = 100;
+		console.log("end of compression pt");
+	}
+	if(this.curPt / 3 == this.endOfSliding){
+		pt.style = 50;
+		console.log("end of sliding pt");
+	}
 		
 	this.data.add(pt);
 	this.curPt += 3;
@@ -73,13 +180,13 @@ ImpulseGraph.prototype.drawVisualization = function() {
 			min = this.pts[p];
 		}
 	  }
-	  max += .1;
-	  min -= .1;
+	  max += Math.abs(max * .1);
+	  min -= Math.abs(min * .1);
 
 	  // specify options
 	  var options = {
-		width:  '165px',
-		height: '165px',
+		width:  '230px',
+		height: '230px',
 		style: 'line',
 		showPerspective: true,
 		showGrid: true,
@@ -94,7 +201,7 @@ ImpulseGraph.prototype.drawVisualization = function() {
 		yMin: min, 
 		zMin: min,
 		
-		dataColor: {fill: '#FF0000', stroke: '#FF0000', strokeWidth: 1}
+		dataColor: {fill: '#0000FF', stroke: '#0000FF', strokeWidth: 1}
 	  };
 
 	  // create our graph
@@ -117,6 +224,20 @@ function VelocityGraph(velocityPtsArr) {
 	
 	
 VelocityGraph.prototype.draw = function () {
+	
+	var max = 0;
+    var min = 0;
+  
+    for(var p=0; p<this.pts.length; p++){
+		if(this.pts[p] > max){
+			max = this.pts[p];
+		}
+		if(this.pts[p] < min){
+			min = this.pts[p];
+		}
+    }
+    max += Math.abs(max * .1);
+    min -= Math.abs(min * .1);
 		
 	this.data = {
 		x: [],
@@ -136,6 +257,22 @@ VelocityGraph.prototype.draw = function () {
 			t: 0,
 			pad: 4
 		  },
+		  
+		xaxis: {
+			domain: [min, max],
+			range: [min, max],
+			tickmode: "linear",
+			ticks: "outside",
+			showticklabels: true
+		},
+		
+		yaxis: {
+			domain: [min, max],
+			range: [min, max],
+			tickmode: "linear",
+			ticks: "outside",
+			showticklabels: true
+		}
 	};
 	
 	this.grow();
