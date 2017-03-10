@@ -114,8 +114,20 @@
 </div>
 
 <div id='customPolygonModal' title='Create Custom Polygon'>
+	<br>
+	<b>Regular Polygon:</b><br>
 	Number of sides: <input type='text' id='numSides' value='5' min='3' max='99'><br><br>
 	<input type='button' id='addPolygon' value='Add' >
+	<br><hr>
+	<b>Input Vertices: </b><br>
+	<ol id='customVerticesList'>
+		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
+		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
+		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
+	</ol>
+	<input type='button' id='addAnotherVertexBtn' value='Add Another Vertex'>
+	<input type='button' id='removeVertexBtn' value='Remove Last Vertex'>
+	<input type='button' id='addCustomPolygonBtn' value='Add Shape'>
 </div>
 
 <div id='meshModal' title='Add Tetrahedral Mesh'>

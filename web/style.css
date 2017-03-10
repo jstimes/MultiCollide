@@ -203,6 +203,10 @@ img {
 	margin-top: 1px;
 }
 
+.customVertices {
+		width: 30px;
+}
+
   #output {
 	width: 100%;
 	height: 200px;
@@ -249,7 +253,7 @@ img {
 	margin-left: 5px;
 	float: right;
 	overflow-y: scroll;
-	width: 280px;
+	width: 320px;
   }
   
   #leftSidePanel {
@@ -271,6 +275,18 @@ img {
 	text-align: center;
 	width: 100%;
 	font-style: italic;
+	font-weight: bold;
+  }
+  
+  .centered-div {
+	  margin: 0 auto;
+  }
+  
+  .centered-div div {
+	  margin: 0 auto;
+  }
+  .centered-div div div {
+	  margin: 0 auto;
   }
   
   #table-menu {
@@ -279,6 +295,7 @@ img {
   
   #table-menu td {
 	  vertical-align: top;
+	  padding-bottom: 15px;
   }
   
   .cursor-label {
@@ -291,6 +308,25 @@ img {
   
   .main-button {
 	  width: 105px;
+  }
+  
+  .postImpactTable {
+		border-collapse: collapse;
+		border: 1px solid black;
+		width: 100%;
+  }
+  .postImpactTable .postImpactCell {
+    border: 1px solid black;
+	text-align: center;
+	vertical-align: center;
+	padding: 5px;
+  }
+  .vectorDiv {
+	  margin-left: 4px;
+  }
+  
+  .vectorNotation {
+	  font-weight: bold;
   }
 
 /* -----------------------------------------------------------------------------

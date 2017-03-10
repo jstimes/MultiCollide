@@ -39,6 +39,7 @@ function multicollide_init() {
 		}
 	});
 	
+	var numCustomVertices = 3;
 	var meshDialog = $("#meshModal").dialog({
 		autoOpen: false,
 		height: 400,
@@ -50,7 +51,7 @@ function multicollide_init() {
 			}
 		},
 		close: function() {
-		
+			numCustomVertices = 3;
 		}
 	});
 	
@@ -74,6 +75,43 @@ function multicollide_init() {
 		close: function() {
 		
 		}
+	});
+	
+	$("#addCustomPolygonBtn").click(function() {
+		
+		var pts = [];
+		var lastPt = {};
+		$(".customVertices").each(function() {
+			if($(this).hasClass('xcoord')){
+				lastPt = {x: $(this).val() };
+			}
+			else {
+				lastPt.y = $(this).val();
+				pts.push(lastPt);
+			}
+		});
+		
+		//console.log(pts);
+		_createNewCustomPolygon();
+		for(var i=0; i<pts.length; i++){
+			_addCustomPolygonVertex(pts[i].x, pts[i].y);
+		}
+		_doneCreatingCustomPolygon();
+	});
+	
+	$("#addAnotherVertexBtn").click(function(){
+		var html = $("<li>").append("(x, y): ").append( $("<input>", {
+			class: 'customVertices xcoord',
+			type: 'text'
+		})).append(", ").append($("<input>", {
+			class: 'customVertices ycoord',
+			type: 'text'
+		}));
+		$("#customVerticesList").append(html);
+	});
+	
+	$("#removeVertexBtn").click(function() {
+		$("#customVerticesList li").last().remove();
 	});
 	
 	$("#impactSettingsBtn").click(function() {
@@ -438,7 +476,7 @@ function multicollide_init() {
 	});
 	
 	$("#addPolygon").click(function() {
-		customPolygonDialog.dialog("close");
+		//customPolygonDialog.dialog("close");
 		var numSides = parseInt($("#numSides").val());
 		if(numSides < 3 || numSides > 99){
 			alert("Invalid number of sides");

@@ -203,6 +203,10 @@ img {
 	margin-top: 1px;
 }
 
+.customVertices {
+		width: 30px;
+}
+
   #output {
 	width: 100%;
 	height: 200px;

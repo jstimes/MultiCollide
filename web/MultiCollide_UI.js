@@ -1,4 +1,9 @@
-$(function() {
+function multicollide_init() {
+	
+	if(!localStorage.getItem('simMode')){
+		initSettingsStorage();
+	}
+	initSettings();
 		  
 	$("#shapesAccordion").accordion({
 	  collapsible: true
@@ -34,6 +39,7 @@ $(function() {
 		}
 	});
 	
+	var numCustomVertices = 3;
 	var meshDialog = $("#meshModal").dialog({
 		autoOpen: false,
 		height: 400,
@@ -45,8 +51,75 @@ $(function() {
 			}
 		},
 		close: function() {
+			numCustomVertices = 3;
+		}
+	});
+	
+	var impactSettingsDialog = $("#impactSettingsModal").dialog({
+		autoOpen: false,
+		height: 400,
+		width: 400,
+		modal: true,	
+		buttons: {
+			Cancel: function() {
+			  impactSettingsDialog.dialog( "close" );
+			},
+			"Save": function() {
+				var newFriction = $("#friction").val();
+				var newRestitution = $("#restitution").val();
+				_setShapeFriction(newFriction);
+				_setShapeRestitution(newRestitution);
+				impactSettingsDialog.dialog( "close" );
+			}
+		},
+		close: function() {
 		
 		}
+	});
+	
+	$("#addCustomPolygonBtn").click(function() {
+		
+		var pts = [];
+		var lastPt = {};
+		$(".customVertices").each(function() {
+			if($(this).hasClass('xcoord')){
+				lastPt = {x: $(this).val() };
+			}
+			else {
+				lastPt.y = $(this).val();
+				pts.push(lastPt);
+			}
+		});
+		
+		//console.log(pts);
+		_createNewCustomPolygon();
+		for(var i=0; i<pts.length; i++){
+			_addCustomPolygonVertex(pts[i].x, pts[i].y);
+		}
+		_doneCreatingCustomPolygon();
+	});
+	
+	$("#addAnotherVertexBtn").click(function(){
+		var html = $("<li>").append("(x, y): ").append( $("<input>", {
+			class: 'customVertices xcoord',
+			type: 'text'
+		})).append(", ").append($("<input>", {
+			class: 'customVertices ycoord',
+			type: 'text'
+		}));
+		$("#customVerticesList").append(html);
+	});
+	
+	$("#removeVertexBtn").click(function() {
+		$("#customVerticesList li").last().remove();
+	});
+	
+	$("#impactSettingsBtn").click(function() {
+		$("#friction").val(_getShapeFriction());
+		$("#restitution").val(_getShapeRestitution());
+		
+		impactSettingsDialog.dialog("open");
+		slideTop.close();
 	});
 	
 	$("#3DaddShapeMenu").menu().on("mouseleave", function(){
@@ -108,10 +181,6 @@ $(function() {
 			"<b>Scale: </b><input style='width:50px' type='text' class='scale shapeData " + shapeName + "'><br><br>" +
 	
 			"<b>Mass: </b><input style='width:50px' type='text' class='mass shapeData " + shapeName + "'><br><br>" +
-	
-			"<b>Friction Coefficient: </b><input style='width:50px' type='text'  class='friction shapeData " + shapeName + "'><br><br>" +
-			
-			"<b>Restitution Coefficient: </b><input style='width:50px' type='text'  class='restitution shapeData " + shapeName + "'><br><br>" +
 			
 			"<input type='button' value='Compute Angular Inertia' class='computeInertia " + shapeName + "'><br>" +
 			"<span class='angularInertia shapeData " + shapeName + "'></span><br><br>" +
@@ -223,47 +292,95 @@ $(function() {
 			var index = _getShapeIndexForName(namePtr);
 			_free(namePtr);
 			
-			if(dataElement === "positionx") {
-				_setShapePositionX(index, value);
-			} else if(dataElement === "positiony"){
-				_setShapePositionY(index, value);
-			} else if(dataElement === "positionz"){
-				_setShapePositionZ(index, value);
-			} else if(dataElement === "velocityx"){
-				_setShapeVelocityX(index, value);
-			} else if(dataElement === "velocityy"){
-				_setShapeVelocityY(index, value);
-			} else if(dataElement === "velocityz"){
-				_setShapeVelocityZ(index, value);
-			} else if(dataElement === "angularvelocityx"){
-				_setShapeAngularVelocityX(index, value);
-			} else if(dataElement === "angularvelocityy"){
-				_setShapeAngularVelocityY(index, value);
-			} else if(dataElement === "angularvelocityz"){
-				_setShapeAngularVelocityZ(index, value);
-			} else if(dataElement === "angularvelocityspeed"){
-				//Assume user enters speed in degrees/sec, convert to rads/s 
-				value *= (Math.PI / 180);
-				_setShapeAngularVelocitySpeed(index, value);
-			} else if(dataElement === "scale"){
-				_setShapeScale(index, value);
-			} else if(dataElement === "mass"){
-				_setShapeMass(index, value);
-			} else if(dataElement === "friction"){
-				_setShapeFriction(index, value);
-			} else if(dataElement === "restitution"){
-				_setShapeRestitution(index, value);
-			} else if(dataElement === "rotationAxisX"){
-				_setShapeRotationAxisX(index, value);
+			if(jacobs_frame){
+				if(dataElement === "positionx") {
+					_setShapePositionX(index, value);
+				} else if(dataElement === "positiony"){
+					_setShapePositionY(index, value);
+				} else if(dataElement === "positionz"){
+					_setShapePositionZ(index, value);
+				} else if(dataElement === "velocityx"){
+					_setShapeVelocityX(index, value);
+				} else if(dataElement === "velocityy"){
+					_setShapeVelocityY(index, value);
+				} else if(dataElement === "velocityz"){
+					_setShapeVelocityZ(index, value);
+				} else if(dataElement === "angularvelocityx"){
+					_setShapeAngularVelocityX(index, value);
+				} else if(dataElement === "angularvelocityy"){
+					_setShapeAngularVelocityY(index, value);
+				} else if(dataElement === "angularvelocityz"){
+					_setShapeAngularVelocityZ(index, value);
+				} else if(dataElement === "angularvelocityspeed"){
+					//Assume user enters speed in degrees/sec, convert to rads/s 
+					value *= (Math.PI / 180);
+					_setShapeAngularVelocitySpeed(index, value);
+				} else if(dataElement === "scale"){
+					_setShapeScale(index, value);
+				} else if(dataElement === "mass"){
+					_setShapeMass(index, value);
+				} 
+				/*else if(dataElement === "friction"){
+					_setShapeFriction(index, value);
+				} else if(dataElement === "restitution"){
+					_setShapeRestitution(index, value);
+				}*/ else if(dataElement === "rotationAxisX"){
+					_setShapeRotationAxisX(index, value);
+				}
+				else if(dataElement === "rotationAxisY"){
+					_setShapeRotationAxisY(index, value);
+				}
+				else if(dataElement === "rotationAxisZ"){
+					_setShapeRotationAxisZ(index, value);
+				}
+				else if(dataElement === "rotationAngle"){
+					_setShapeRotationAngle(index, value);
+				}
 			}
-			else if(dataElement === "rotationAxisY"){
-				_setShapeRotationAxisY(index, value);
-			}
-			else if(dataElement === "rotationAxisZ"){
-				_setShapeRotationAxisZ(index, value);
-			}
-			else if(dataElement === "rotationAngle"){
-				_setShapeRotationAngle(index, value);
+			else {
+				if(dataElement === "positionx") {
+					_setShapePositionX(index, value);
+				} else if(dataElement === "positiony"){
+					_setShapePositionZ(index, -1.0 * value);
+				} else if(dataElement === "positionz"){
+					_setShapePositionY(index, value);
+				} else if(dataElement === "velocityx"){
+					_setShapeVelocityX(index, value);
+				} else if(dataElement === "velocityy"){
+					_setShapeVelocityZ(index, -1.0 * value);
+				} else if(dataElement === "velocityz"){
+					_setShapeVelocityY(index, value);
+				} else if(dataElement === "angularvelocityx"){
+					_setShapeAngularVelocityX(index, value);
+				} else if(dataElement === "angularvelocityy"){
+					_setShapeAngularVelocityZ(index, -1.0 * value);
+				} else if(dataElement === "angularvelocityz"){
+					_setShapeAngularVelocityY(index, value);
+				} else if(dataElement === "angularvelocityspeed"){
+					//Assume user enters speed in degrees/sec, convert to rads/s 
+					value *= (Math.PI / 180);
+					_setShapeAngularVelocitySpeed(index, value);
+				} else if(dataElement === "scale"){
+					_setShapeScale(index, value);
+				} else if(dataElement === "mass"){
+					_setShapeMass(index, value);
+				} 
+				/*else if(dataElement === "friction"){
+					_setShapeFriction(index, value);
+				} else if(dataElement === "restitution"){
+					_setShapeRestitution(index, value);
+				}*/ else if(dataElement === "rotationAxisX"){
+					_setShapeRotationAxisX(index, value);
+				}
+				else if(dataElement === "rotationAxisY"){
+					_setShapeRotationAxisZ(index, -1.0 * value);
+				}
+				else if(dataElement === "rotationAxisZ"){
+					_setShapeRotationAxisY(index, value);
+				}
+				else if(dataElement === "rotationAngle"){
+					_setShapeRotationAngle(index, value);
+				}
 			}
 		});
 		
@@ -359,7 +476,7 @@ $(function() {
 	});
 	
 	$("#addPolygon").click(function() {
-		customPolygonDialog.dialog("close");
+		//customPolygonDialog.dialog("close");
 		var numSides = parseInt($("#numSides").val());
 		if(numSides < 3 || numSides > 99){
 			alert("Invalid number of sides");
@@ -369,12 +486,13 @@ $(function() {
 		addShape();
 	});
 	
-	$("#submitMeshFile").change(function() {
-		if($("#meshFileUpload").files != null && $("#meshFileUpload").files.length > 0){
-			var fileName = $("#meshFileUpload").files[0].name;
+	$("#submitMeshBtn").click(function() {
+
+		if($("#meshFileUpload")[0].files != null && $("#meshFileUpload")[0].files.length > 0){
+			
+			var fileName = $("#meshFileUpload")[0].files[0].name;
 			var reader = new FileReader ();
 			reader.onloadend = function (ev) { 
-				
 				var fileNamePtr = allocate(intArrayFromString(fileName), 'i8', ALLOC_NORMAL);
 				var fileContentPtr = allocate(intArrayFromString(this.result), 'i8', ALLOC_NORMAL);
 				
@@ -387,7 +505,10 @@ $(function() {
 				meshDialog.dialog("close");
 			
 			};
-			reader.readAsText ($("#meshFileUpload").files[0]);
+			reader.readAsText ($("#meshFileUpload")[0].files[0]);
+		}
+		else {
+			alert("No");
 		}
 	});
 	
@@ -454,36 +575,6 @@ $(function() {
 	$("#sceneShapesShowBtn").click(function() {
 		
 		showSceneShapes();
-		
-		
-		
-		
-		// $("#rightSidePanel").show();
-		// window.dispatchEvent(new Event('resize'));
-		// var toGrow = $("#rightSidePanel").width();
-		// $("#rightSidePanel").width(0);
-		
-		// $.when($("#rightSidePanel").animate( {
-			// width: toGrow
-		// }, { duration: 2000, queue: false })).then(/*function() { window.dispatchEvent(new Event('resize')); }*/);
-		
-		// var newWidth = $("#mainContent").width() - toGrow;
-		// $("#mainContent").animate( {
-			// width: newWidth
-		// }, { duration: 2000, queue: false }, 
-		
-		
-		
-		
-		
-		/*
-		$("#rightSidePanel").show("slide", { direction: "right" }, 1000);*/
-		
-		
-		//$.when($("#rightSidePanel").show("slide", { direction: "right" }, 1000)).then(function() {
-			//sceneShapesOpen = true;
-			//window.dispatchEvent(new Event('resize'));
-		//});
 	});
 	
 	$("#sceneShapesHideBtn").click(function() {
@@ -514,10 +605,43 @@ $(function() {
 		localStorage.setItem('showVelocity', this.checked);
 		checkIfShouldShowGraphs();
 	});
+	
+	$("#canvas").mouseleave(function() {
+		_deselectShape();
+		clearSelection();
+	});
+	
+	$("#canvas").mouseenter(function() {
+		clearSelection();
+	});
 		  
-});
+}
 
+function clearSelection() {
+    if ( document.selection ) {
+        document.selection.empty();
+    } else if ( window.getSelection ) {
+        window.getSelection().removeAllRanges();
+    }
+}
+
+var jacobs_frame = false;
 var sceneShapesOpen = true;
+
+function multicollide_update() {
+	if(_isNewData()){
+	  updateShapeData();
+	}
+	if(_isImpulseMode() != isImpulseMode){
+	  isImpulseMode = _isImpulseMode();
+	  toggleImpulseControls();
+	}
+	var currentlyPickedIndex = _getPickedShapeIndex();
+	if(pickedShapeIndex != currentlyPickedIndex && currentlyPickedIndex != -1 && sceneShapesOpen){
+		pickedShapeIndex = currentlyPickedIndex;
+		openPickedShapeInfo();
+	}
+}
  
  window.onresize = function() {
 	  if(document["fullScreen"])
@@ -590,25 +714,49 @@ var sceneShapesOpen = true;
  function getShapeData(i){
 	 var data = [];
 
-	data["positionx"] = _getShapePositionX(i);
-	data["positiony"] = _getShapePositionY(i);
-	data["positionz"] = _getShapePositionZ(i);
-	data["velocityx"] = _getShapeVelocityX(i);
-	data["velocityy"] = _getShapeVelocityY(i);
-	data["velocityz"] = _getShapeVelocityZ(i);
-	data["mass"] = _getShapeMass(i);
-	data["scale"] = _getShapeScale(i);
-	data["friction"] = _getShapeFriction(i);
-	data["angularvelocityx"] = _getShapeAngularVelocityX(i);
-	data["angularvelocityy"] = _getShapeAngularVelocityY(i);
-	data["angularvelocityz"] = _getShapeAngularVelocityZ(i);
-	data["angularvelocityspeed"] = _getShapeAngularVelocitySpeed(i);
-	data["restitution"] = _getShapeRestitution(i);
-	
-	data["rotationAxisX"] = _getShapeRotationAxisX(i);
-	data["rotationAxisY"] = _getShapeRotationAxisY(i);
-	data["rotationAxisZ"] = _getShapeRotationAxisZ(i);
-	data["rotationAngle"] = _getShapeRotationAngle(i);
+	 if(jacobs_frame){
+		data["positionx"] = _getShapePositionX(i);
+		data["positiony"] = _getShapePositionY(i);
+		data["positionz"] = _getShapePositionZ(i);
+		data["velocityx"] = _getShapeVelocityX(i);
+		data["velocityy"] = _getShapeVelocityY(i);
+		data["velocityz"] = _getShapeVelocityZ(i);
+		data["mass"] = _getShapeMass(i);
+		data["scale"] = _getShapeScale(i);
+		//data["friction"] = _getShapeFriction(i);
+		data["angularvelocityx"] = _getShapeAngularVelocityX(i);
+		data["angularvelocityy"] = _getShapeAngularVelocityY(i);
+		data["angularvelocityz"] = _getShapeAngularVelocityZ(i);
+		data["angularvelocityspeed"] = _getShapeAngularVelocitySpeed(i);
+		//data["restitution"] = _getShapeRestitution(i);
+		
+		data["rotationAxisX"] = _getShapeRotationAxisX(i);
+		data["rotationAxisY"] = _getShapeRotationAxisY(i);
+		data["rotationAxisZ"] = _getShapeRotationAxisZ(i);
+		data["rotationAngle"] = _getShapeRotationAngle(i);
+	 }
+	 else {
+		 data["positionx"] = _getShapePositionX(i);
+		data["positiony"] = -1.0 * _getShapePositionZ(i);
+		data["positionz"] = _getShapePositionY(i);
+		data["velocityx"] = _getShapeVelocityX(i);
+		data["velocityy"] = -1.0 * _getShapeVelocityZ(i);
+		data["velocityz"] = _getShapeVelocityY(i);
+		data["mass"] = _getShapeMass(i);
+		data["scale"] = _getShapeScale(i);
+		//data["friction"] = _getShapeFriction(i);
+		data["angularvelocityx"] = _getShapeAngularVelocityX(i);
+		data["angularvelocityy"] = -1.0 * _getShapeAngularVelocityZ(i);
+		data["angularvelocityz"] = _getShapeAngularVelocityY(i);
+		data["angularvelocityspeed"] = _getShapeAngularVelocitySpeed(i);
+		//data["restitution"] = _getShapeRestitution(i);
+		
+		data["rotationAxisX"] = _getShapeRotationAxisX(i);
+		data["rotationAxisY"] = -1.0 * _getShapeRotationAxisZ(i);
+		data["rotationAxisZ"] = _getShapeRotationAxisY(i);
+		data["rotationAngle"] = _getShapeRotationAngle(i);
+
+	 }
 	
 	return data;
  }
@@ -635,6 +783,7 @@ var sceneShapesOpen = true;
  var velocityPts = [];
  
  function toggleImpulseControls() {
+	 console.log("Toggling impulse controls");
 	if(!isImpulseMode) {
         //$('#impulseControls').hide();//"slide", { direction: "right" }, 1000);
 		//console.log("width: " + $('#impulseControls').width());
@@ -709,50 +858,101 @@ var sceneShapesOpen = true;
 		var w2EndZ = round3(_getImpactResultsW2endZ());
 		
 		var endOfSliding = _getImpactResultsEndOfSliding();
-		var endOfCompres = _getImpactResultsEndOfCompression();
+		var endOfCompression = _getImpactResultsEndOfCompression();
 		
 		var IendX = round3(_getImpactResultsIendX());
 		var IendY = round3(_getImpactResultsIendY());
 		var IendZ = round3(_getImpactResultsIendZ());
 		
+		if(!jacobs_frame){
+			var temp = v1EndY;
+			v1EndY = -1.0 * v1EndZ;
+			v1EndZ = temp;
+			
+			temp = v2EndY;
+			v2EndY = -1.0 * v2EndZ;
+			v2EndZ = temp;
+			
+			temp = w1EndY;
+			w1EndY = -1.0 * w1EndZ;
+			w1EndZ = temp;
+			
+			temp = w2EndY;
+			w2EndY = -1.0 * w2EndZ;
+			w2EndZ = temp;
+			
+			temp = IendY;
+			IendY = -1.0 * IendZ;
+			IendZ = temp;
+		}
+		
 		
 		//TODO if 2D don't output z's
 		var html = "<h4 id='impactVisualizations'>A Collision Occurred</h4>" + 
-			"<div id='graphsContainer' height='400px'>";
+			"<div id='graphsContainer' height='520px'>";
 			
 			if(showImpulseGraph){
 				html += "<p class='graphLabel'>Impulse Accumulation</p>" + 
-				"<div id='graph1'></div><br><br>";
+				"<div id='graph1'  height='230px' class='centered-div'></div><br><br>";
 			}
 			
 			if(showVelocityGraph){
 				html += "<p class='graphLabel'>Sliding Velocity Curve (Hodograph)</p>" +
-				"<div id='graph2'></div>";
+				"<canvas id='graph2' height='240px' class='centered-div'></canvas>";
 			}
 				
 				
 				
-			html += "<p>Total Impulse: <br>" + 
-				"(" + IendX + ", " + IendY + ", " + IendZ + ")<br>" + 
+			html += 
+				"<br><br><b><i>Post-impact values: </i></b><br>" +
+				"<table class='postImpactTable'><tr><td class='postImpactCell'></td><td class='postImpactCell'>" + Pointer_stringify(_getContactShape1Name()) + "</td><td class='postImpactCell'>" + Pointer_stringify(_getContactShape2Name()) + "</td></tr>" + 
+					"<tr><td class='postImpactCell'><span class='vectorNotation'>v+</span></td><td class='postImpactCell'>";
+					if(!using2D){
+						html += "<div class='vectorDiv'>" + getHtmlVector(v1EndX, v1EndY, v1EndZ) + "</div>";
+					}
+					else {
+						html += "<div class='vectorDiv'>" + getHtmlVector(v1EndX, v1EndY) + "</div>";
+					}
+					html += "</td><td class='postImpactCell'>";
+					if(!using2D){
+						html += "<div class='vectorDiv'>" + getHtmlVector(v2EndX, v2EndY, v2EndZ) + "</div>";
+					}
+					else {
+						html += "<div class='vectorDiv'>" + getHtmlVector(v2EndX, v2EndY) + "</div>";
+					}
+					html += "</td></tr>" +
+					"<tr><td class='postImpactCell'><span class='vectorNotation'>w+</span></td><td class='postImpactCell'>" 
+					if(!using2D){
+						html += "<div class='vectorDiv'>" + getHtmlVector(w1EndX, w1EndY, w1EndZ) + "</div>";
+					}
+					else {
+						html += w1EndX;
+					}
+					html += "</td><td class='postImpactCell'>";
+					if(!using2D){
+						html += "<div class='vectorDiv'>" + getHtmlVector(w2EndX, w2EndY, w2EndZ) + "</div>";
+					}
+					else {
+						html += w2EndX;
+					}
+					html += "</td></tr>";
+				html += "</table>";
 				
-				"<p>End of Sliding at: " + endOfSliding + "</p><br>" +
-				"<p>End of Compression at: " + endOfCompres + "</p>" +
 				
-				"<p>Post impact velocities: <br>" + 
-				"(" + v1EndX + ", " + v1EndY + ", " + v1EndZ + ")<br>" + 
-				"(" + v2EndX + ", " + v2EndY + ", " + v2EndZ + ")<br>" + 
+				html += "<br><br><b><i>Impulse information: </i></b><br><table class='postImpactTable'>" +
+					"<tr><td class='postImpactCell'>Total Impulse</td><td class='postImpactCell'><div class='vectorDiv'>" + getHtmlVector(IendX, IendY, IendZ) + "</div></td></tr>" +
+								
+				"<tr><td class='postImpactCell'>End of Sliding</td><td class='postImpactCell'>" + endOfSliding + "</td></tr>" +
+				"<tr><td class='postImpactCell'>End of Compression</td><td class='postImpactCell'>" + endOfCompression + "</td></tr></table>";
 				
-				"<p>Post impact angular velocities: <br>" + 
-				"(" + w1EndX + ", " + w1EndY + ", " + w1EndZ + ")<br>" + 
-				"(" + w2EndX + ", " + w2EndY + ", " + w2EndZ + ")<br><br>" + 
-				
-				"<input type='button' class='ui-button ui-widget ui-corner-all' id='impulseContinueBtn' value='Continue'>" +
-				"<input type='button' class='ui-button ui-widget ui-corner-all' id='impulseRestartBtn' value='Restart'>" +
+				html += "<br><br><div class='centered-div'><input type='button' class='ui-button ui-widget ui-corner-all' id='impulseContinueBtn' value='Continue'>" +
+				"<input type='button' class='ui-button ui-widget ui-corner-all' id='impulseRestartBtn' value='Restart'></div>" +
 			"</div>";
 		
 		var accord = $('#shapesAccordion');
 		accord.append(html);
 		accord.accordion("refresh");
+		$(".svg-containger").attr('margin', '0 auto');
 		// $("#rightSidePanel").attr('height', 400);
 		// accord.attr('height', 400);
 		
@@ -784,10 +984,10 @@ var sceneShapesOpen = true;
 			var indexToOpen = accord.children('div').length - 1;
 			accord.accordion('option', 'active', indexToOpen);
 			if(showImpulseGraph){
-				drawImpulse(impulsePts);
+				drawImpulse(impulsePts, endOfCompression, endOfSliding);
 			}
 			if(showVelocityGraph) {
-				drawVelocity(velocityPts);
+				drawVelocity(velocityPts, endOfCompression, endOfSliding);
 			}
 		};
 		
@@ -867,6 +1067,37 @@ var sceneShapesOpen = true;
 	else if(rotDisplay === 'rotationAxis'){
 		_setPlotRotaionAxis(true);
 	}	
+ }
+ 
+ function getHtmlMatrix(xx, xy, xz, yx, yy, yz, zx, zy, zz){
+	 return "<table class='matrix'>" + 
+				"<tr>" + 
+					"<td>" + xx + "</td>" + 
+					"<td>" + xy + "</td>" + 
+					"<td>" + xz + "</td>" + 
+				"</tr>" + 
+				"<tr>" + 
+					"<td>" + yx + "</td>" + 
+					"<td>" + yy + "</td>" + 
+					"<td>" + yz + "</td>" + 
+				"</tr>" + 
+				"<tr>" + 
+					"<td>" + zx + "</td>" + 
+					"<td>" + zy + "</td>" + 
+					"<td>" + zz + "</td>" + 
+				"</tr>" + 
+			"</table>";
+ }
+ 
+  function getHtmlVector(x, y, z){
+	 var html = "<table class='matrix'>" + 
+				"<tr>" + 
+					"<td>" + x + "</td></tr>" + 
+					"<tr><td>" + y + "</td></tr>";
+					if(typeof z !== undefined)
+						html += "<tr><td>" + z + "</td></tr>";
+			html +=	"</table>";
+	return html;
  }
  
  var using2D = false;

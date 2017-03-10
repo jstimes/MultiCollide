@@ -9,6 +9,7 @@
 	  <script src='OESVertexArrayObject-polyfill.js'></script>
 	
 	  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+	  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.js"></script>
 	  
 	  <link rel="stylesheet" href="jquery-ui-1.12.1.custom/jquery-ui.css">
 	  <link rel="stylesheet" href="style.css">
@@ -70,19 +71,6 @@
 		 <input type='button' class='ui-button ui-widget ui-corner-all main-button' id='run' value='Run'><br>
 		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='reset' value='Reset Scene'><br>
 		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='resetCamera' value='Reset Camera'>
-		
-		<br><br>
-		
-		<span><b>Camera control:</b></span><br>
-			<label class='camera-label'>
-			<input class='cursorState' type='radio' name='cameraMode' id='cameraPan' checked>Pan
-			</label><br>
-			<label class='camera-label'>
-			<input class='cursorState' type='radio' name='cameraMode' id='cameraZoom'>Zoom
-			</label><br>
-			<label id='cameraDomToHide' class='camera-label'>
-			<input class='cursorState' type='radio' name='cameraMode' id='cameraRotate'>Rotate
-			</label>
 			
 			<br><br>
 			<span><b>Cursor state:</b></span><br>
@@ -103,6 +91,17 @@
 			Velocity
 			</label>
 		<br><br>
+		
+		<span><b>Camera control:</b></span><br>
+			<label class='camera-label'>
+			<input class='cursorState' type='radio' name='cameraMode' id='cameraPan' checked>Pan
+			</label><br>
+			<label class='camera-label'>
+			<input class='cursorState' type='radio' name='cameraMode' id='cameraZoom'>Zoom
+			</label><br>
+			<label id='cameraDomToHide' class='camera-label'>
+			<input class='cursorState' type='radio' name='cameraMode' id='cameraRotate'>Rotate
+			</label>
 	</div>
 
 <div id='customSuperquadricModal' title='Create Custom Superquadric'>
@@ -115,15 +114,33 @@
 </div>
 
 <div id='customPolygonModal' title='Create Custom Polygon'>
+	<br>
+	<b>Regular Polygon:</b><br>
 	Number of sides: <input type='text' id='numSides' value='5' min='3' max='99'><br><br>
 	<input type='button' id='addPolygon' value='Add' >
+	<br><hr>
+	<b>Input Vertices: </b><br>
+	<ol id='customVerticesList'>
+		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
+		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
+		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
+	</ol>
+	<input type='button' id='addAnotherVertexBtn' value='Add Another Vertex'>
+	<input type='button' id='removeVertexBtn' value='Remove Last Vertex'>
+	<input type='button' id='addCustomPolygonBtn' value='Add Shape'>
 </div>
 
 <div id='meshModal' title='Add Tetrahedral Mesh'>
 
 	<hr><label>Upload custom mesh file:
 	<input type='file' value='Choose Mesh File' id='meshFileUpload'></label><br><br><br><br>
-	<input type='button' value='Submit' id='submitMeshFile'>
+	<input type='button' value='Submit' id='submitMeshBtn'>
+</div>
+
+<div id='impactSettingsModal' title='Impact Settings'>
+	Friction Coefficient (<i>&mu;</i>): <input type='text' id='friction'><br><br>
+	Restitution Coefficient (<i>e</i>): <input type='text' id='restitution'><br><br>
+	<!--input type='button' id='impactSettingsSaveBtn' value='Save' -->
 </div>
 	
 	<div id='mainContent'>
@@ -160,31 +177,50 @@
 	
 	<!-- Settings Menu -->
 	<nav id="c-menu--slide-top" class="c-menu c-menu--slide-top">
-		<table id='table-menu'><tr>
-			<td>
-				<button class="c-menu__close"><strong>x</strong></button>
-			</td>
-			<td>
-				<span><b>Simulation Mode:</b></span> <br>
-				<input type='radio' name='dimension' id='3D' value='3D'>3D<br>
-				<input type='radio' name='dimension' id='2D' value='2D'>2D
-			</td>
-			<td>
-				<span><b>Collision Mode: </b></span><br>
-				<label><input type='checkbox' id='collisionMode'>Free Fly</label>
-			</td>
-			<td>
-				<span><b>Shape Rotation Display: </b></span><br>
-				<label><input type='radio' name='rotationDisplay' value='rotationAxis'>Plot Rotation Axis</label><br>
-				<label><input type='radio' name='rotationDisplay' value='principalFrame'>Plot Principal Frame</label><br>
-				<label><input type='radio' name='rotationDisplay' value='noRotationDisplay'>No Display</label>
-			</td>
-			<td>
-				<span><b>Impact Visualization: </b></span><br>
-				<label><input type='checkbox' id='showImpulse' value='true'>Impulse Accumulation</label><br>
-				<label><input type='checkbox' id='showVelocity' value='true'>Sliding Velocity Curve (Hodograph)</label><br>
-			</td>
-		</tr></table>
+		<table id='table-menu'>
+			<tr>
+				<td>
+					<button class="c-menu__close"><strong>x</strong></button>
+				</td>
+				<td>
+					<span><b>Simulation Mode:</b></span> <br>
+					<input type='radio' name='dimension' id='3D' value='3D'>3D<br>
+					<input type='radio' name='dimension' id='2D' value='2D'>2D
+				</td>
+				<td>
+					<span><b>Collision Mode: </b></span><br>
+					<label><input type='checkbox' id='collisionMode'>Free Fly</label>
+				</td>
+				<td>
+					<span><b>Shape Rotation Display: </b></span><br>
+					<label><input type='radio' name='rotationDisplay' value='rotationAxis'>Plot Rotation Axis</label><br>
+					<label><input type='radio' name='rotationDisplay' value='principalFrame'>Plot Principal Frame</label><br>
+					<label><input type='radio' name='rotationDisplay' value='noRotationDisplay'>No Display</label>
+				</td>
+				<td>
+					<span><b>Impact Visualization: </b></span><br>
+					<label><input type='checkbox' id='showImpulse' value='true'>Impulse Accumulation</label><br>
+					<label><input type='checkbox' id='showVelocity' value='true'>Sliding Velocity Curve (Hodograph)</label><br>
+				</td>
+			</tr>
+			<tr>
+				<td>
+				</td>
+				<td>
+					<input type='button' id='impactSettingsBtn' value='Impact Settings'>
+				</td>
+				<td>
+					
+				</td>
+				
+				<td>
+				
+				</td>
+				<td>
+				
+				</td>
+			</tr>
+		</table>
 	</nav>
 		
 	<!-- Mask for when settings is open -->
@@ -282,17 +318,15 @@
         
         var script = document.createElement('script');
         script.src = "MultiCollide.js";
+		document.body.appendChild(script);
+		
 		script.onload = function() {
-			//Initialize settings here, after the MultiCollide code is loaded
-			// so backend settings can be set
-			if(!localStorage.getItem('simMode')){
-				initSettingsStorage();
-			}
-			initSettings();
-		}
-        document.body.appendChild(script);
+			multicollide_init();
+		};
 
       }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
+	  
+	  
     };
     document.body.appendChild(scriptASM);
 
