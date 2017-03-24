@@ -80,7 +80,14 @@ function multicollide_init() {
 	$("#addCustomPolygonBtn").click(function() {
 		
 		var pts = [];
-		var lastPt = {};
+		//var lastPt = {};
+		var ptsText = $("#customVerticesTextArea").val();
+		var ptsTextArr = ptsText.split(/\r?\n/);
+		for(var i=0; i<ptsTextArr.length; i++){
+			var xyArr = ptsTextArr[i].split(',');
+			pts.push({x: parseFloat(xyArr[0]), y: parseFloat(xyArr[1])});
+		}
+		/*
 		$(".customVertices").each(function() {
 			if($(this).hasClass('xcoord')){
 				lastPt = {x: $(this).val() };
@@ -89,7 +96,7 @@ function multicollide_init() {
 				lastPt.y = $(this).val();
 				pts.push(lastPt);
 			}
-		});
+		});*/
 		
 		//console.log(pts);
 		_createNewCustomPolygon();
@@ -97,6 +104,7 @@ function multicollide_init() {
 			_addCustomPolygonVertex(pts[i].x, pts[i].y);
 		}
 		_doneCreatingCustomPolygon();
+		addShape();
 	});
 	
 	$("#addAnotherVertexBtn").click(function(){
