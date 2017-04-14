@@ -192,7 +192,7 @@ function multicollide_init() {
 			
 			if(!icoMode){
 				html += "<span class='removeButton'>&times;</span>";
-				html += "<span class='duplicateButton'>&#43; Duplicate</span>";
+				//html += "<span class='duplicateButton'>&#43; Duplicate</span>";
 			}
 			
 			html += "</h4>" +
@@ -352,19 +352,19 @@ function multicollide_init() {
 			var table = "<span>Angular Inertia: </span><br><br>"+
 			"<table class='matrix angularInertiaMatrix'>" + 
 				"<tr>" + 
-					"<td>" + xx + "</td>" + 
-					"<td>" + xy + "</td>" + 
-					"<td>" + xz + "</td>" + 
+					"<td>" + roundNumber(xx) + "</td>" + 
+					"<td>" + roundNumber(xy) + "</td>" + 
+					"<td>" + roundNumber(xz) + "</td>" + 
 				"</tr>" + 
 				"<tr>" + 
-					"<td>" + yx + "</td>" + 
-					"<td>" + yy + "</td>" + 
-					"<td>" + yz + "</td>" + 
+					"<td>" + roundNumber(yx) + "</td>" + 
+					"<td>" + roundNumber(yy) + "</td>" + 
+					"<td>" + roundNumber(yz) + "</td>" + 
 				"</tr>" + 
 				"<tr>" + 
-					"<td>" + zx + "</td>" + 
-					"<td>" + zy + "</td>" + 
-					"<td>" + zz + "</td>" + 
+					"<td>" + roundNumber(zx) + "</td>" + 
+					"<td>" + roundNumber(zy) + "</td>" + 
+					"<td>" + roundNumber(zz) + "</td>" + 
 				"</tr>" + 
 				"</table>";
 				
@@ -1347,8 +1347,16 @@ function multicollide_update() {
 			continue;
 		}
 		if(!foundSceneInfo){
-			var mu = parseFloat(rowCells[0]);
-			var e = parseFloat(rowCells[1]);
+			var isUsing2D = parseInt(rowCells[0]);
+			var mu = parseFloat(rowCells[1]);
+			var e = parseFloat(rowCells[2]);
+			
+			var simMode = '3D';
+			if(isUsing2D){
+				simMode = '2D';
+			}
+			initDimension(simMode);
+			
 			_setShapeFriction(mu);
 			_setShapeRestitution(e);
 			foundSceneInfo = true;
@@ -1436,10 +1444,10 @@ function multicollide_update() {
 				var rotAxisY = parseFloat(rowCells[8]);
 				var rotAxisZ = parseFloat(rowCells[9]);
 				
-				_setShapeRotationAngle(curShapeIndex, rotAngle);
-				_setShapeRotationAxisX(curShapeIndex, rotAxisX);
-				_setShapeRotationAxisY(curShapeIndex, rotAxisY);
-				_setShapeRotationAxisZ(curShapeIndex, rotAxisZ);
+				//_setShapeRotationAngle(curShapeIndex, rotAngle);
+				//_setShapeRotationAxisX(curShapeIndex, rotAxisX);
+				//_setShapeRotationAxisY(curShapeIndex, rotAxisY);
+				//_setShapeRotationAxisZ(curShapeIndex, rotAxisZ);
 				
 				var angVelX = parseFloat(rowCells[10]);
 				var angVelY = parseFloat(rowCells[11]);
@@ -1499,6 +1507,10 @@ function multicollide_update() {
 	//mu & e:
 	$("#friction").val(_getShapeFriction());
 	$("#restitution").val(_getShapeRestitution());
+ }
+ 
+ function roundNumber(num){
+	 return Math.round(num * 100) / 100
  }
  
  function initSettingsStorage() {
