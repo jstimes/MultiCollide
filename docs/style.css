@@ -106,12 +106,117 @@ img {
 
 /* Jacob's Styling: */
 
+.removeButton {
+	
+	float: right;
+	margin-right: 3px;
+	border-radius: 3px;
+	padding-left: 3px;
+	padding-right: 3px;
+	font-size: 14px;
+	color: white;
+	background-color: grey;
+}
+.removeButtonHover {
+	background-color: red;
+}
+
+.duplicateButton {
+	float:right;
+	margin-right: 5px;
+	padding-top: 2px;
+	padding-bottom: 2px;
+	padding-left: 3px;
+	padding-right: 3px;
+	border-radius: 3px;
+	font-size: 10px;
+	color: white;
+	background-color: grey;
+}
+
+.duplicateButtonHover {
+	background-color: green;
+}
+
+
+
+.angularInertiaMatrix {
+	margin-left: 15px;
+	margin-top: 3px;
+}
+
+/* From: http://enjoycss.com/gallery/shapes/gn */
+.close-button {
+  display: inline-block;
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  width: 0.2em;
+  height: 0.2em;
+  position: relative;
+  border: none;
+  -webkit-border-radius: 1em;
+  border-radius: 1em;
+  font: normal 8em/normal Arial, Helvetica, sans-serif;
+  color: rgba(0,0,0,1);
+  -o-text-overflow: clip;
+  text-overflow: clip;
+  background: #1abc9c;
+  float: right;
+}
+
+.close-button::before {
+  display: inline-block;
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  width: 0.12em;
+  height: 0.027em;
+  position: absolute;
+  content: "";
+  top: 0.08em;
+  left: 0.0412em;
+  border: none;
+  font: normal 100%/normal Arial, Helvetica, sans-serif;
+  color: rgba(0,0,0,1);
+  -o-text-overflow: clip;
+  text-overflow: clip;
+  background: #ffffff;
+  text-shadow: none;
+  -webkit-transform: rotateZ(45deg)   ;
+  transform: rotateZ(45deg)   ;
+}
+
+.close-button::after {
+  display: inline-block;
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  width: 0.12em;
+  height: 0.027em;
+  position: absolute;
+  content: "";
+  top: 0.08em;
+  left: 0.0412em;
+  border: none;
+  font: normal 100%/normal Arial, Helvetica, sans-serif;
+  color: rgba(0,0,0,1);
+  -o-text-overflow: clip;
+  text-overflow: clip;
+  background: #ffffff;
+  text-shadow: none;
+  -webkit-transform: rotateZ(-45deg)   ;
+  transform: rotateZ(-45deg)   ;
+}
+
 
   .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
   div.emscripten { text-align: center; }      
   div.emscripten_border { border: 1px solid black; }
   /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
   canvas.emscripten { border: 0px none; }
+  
+  
 
   #emscripten_logo {
 	display: inline-block;
@@ -254,7 +359,34 @@ img {
 	float: right;
 	overflow-y: scroll;
 	width: 320px;
+	height: 680px;
   }
+  
+  #shapesAccordion {
+	  height: 640px;
+  }
+  
+  #shapesAccordion .ui-accordion-content { padding: 0; }
+  
+  #shapesAccordion .ui-tabs-active {
+	  background: #fff;
+  }
+  
+  *:focus {
+    outline: none;
+    -moz-box-shadow: none;
+    -webkit-box-shadow: none;
+    box-shadow: none;
+}
+  
+   #shapesAccordion .ui-tabs .ui-tabs-nav li.ui-tabs-active a {
+    color: #000;
+  }
+  
+  .removeShape {
+	  margin-left: 100px;
+  }
+ 
   
   #leftSidePanel {
 	margin-top: 50px;
