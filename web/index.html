@@ -26,16 +26,8 @@
 	
     <div id='o-wrapper' class='o-wrapper'>
 	
-	<div id='top' style='margin-bottom: 12px;'>
-		<span style='font-size: 22px;'>MultiCollide: A rigid body impact simulator</span> &nbsp;
-		<a href='#' id="c-button--slide-top" >Settings</a>&nbsp; | &nbsp;
-		<a href='documentation.html'>Documentation & Issues</a>
-		
-		<!--span style='margin-left: 400px;'>
-			<label>&mu; (friction coefficient):&nbsp;<input type='text' id='friction' size='5'></label>
-			<label style='margin-left: 10px;'>e (restitution coefficient):&nbsp;<input type='text' id='restitution' size='5'></label>
-		</span-->
-        
+	<div id='top'>
+		<!--a href='#' id="c-button--slide-top" >Settings</a>&nbsp; | &nbsp;-->
         <div id='constantControls' style= 'float: right; margin-right: 95px;'>
             <table>
                 <tr>
@@ -55,6 +47,61 @@
                 </tr>
             </table>
         </div>
+        <div id='settingsContainer'>
+        
+            <!-- Title -->
+            <span style='font-size: 22px;'>MultiCollide: A rigid body impact simulator</span>
+        
+            <!--Dimension -->
+            <div class="dropdown">
+                <button class="dropbtn">Dimension</button>
+                <div class="dropdown-content">
+                    <label><input type='radio' name='dimension' id='3D' value='3D'>3D</label>
+                    <label><input type='radio' name='dimension' id='2D' value='2D'>2D</label>
+                </div>
+            </div>
+            
+            <!--Mode -->
+            <div class="dropdown">
+                <button class="dropbtn">Mode</button>
+                <div class="dropdown-content">
+                    <label><input type='checkbox' id='collisionMode'>Free Fly</label>
+                </div>
+            </div>
+            
+            <!--Rotation display -->
+            <div class="dropdown">
+                <button class="dropbtn">Rotation display</button>
+                <div class="dropdown-content">
+                    <label><input type='radio' name='rotationDisplay' value='rotationAxis'>Plot Rotation Axis</label>
+					<label><input type='radio' name='rotationDisplay' value='principalFrame'>Plot Principal Frame</label>
+					<label><input type='radio' name='rotationDisplay' value='noRotationDisplay'>No Display</label>
+                </div>
+            </div>
+            
+            <!--Visualization -->
+            <div class="dropdown">
+                <button class="dropbtn">Visualizations</button>
+                <div class="dropdown-content">
+                    <label><input type='checkbox' id='showImpulse' value='true'>Impulse Accumulation</label>
+					<label><input type='checkbox' id='showVelocity' value='true'>Sliding Velocity Curve (Hodograph)</label>
+                </div>
+            </div>
+            
+            <!-- docs link -->
+            <div class='dropdown'>
+                <a href='documentation.html' style='display: inline;'>
+                    <button class='dropbtn'>Documentation</button>
+                </a>
+            </div>
+        </div>
+		
+		
+		<!--span style='margin-left: 400px;'>
+			<label>&mu; (friction coefficient):&nbsp;<input type='text' id='friction' size='5'></label>
+			<label style='margin-left: 10px;'>e (restitution coefficient):&nbsp;<input type='text' id='restitution' size='5'></label>
+		</span-->
+        
 	</div>
 
      <div id='leftSidePanel'>
@@ -256,7 +303,7 @@
 	</div> <!-- o-wrapper -->
 	
 	<!-- Settings Menu -->
-	<nav id="c-menu--slide-top" class="c-menu c-menu--slide-top">
+	<!--nav id="c-menu--slide-top" class="c-menu c-menu--slide-top">
 		<table id='table-menu'>
 			<tr>
 				<td>
@@ -298,8 +345,8 @@
 					<!-- </label> -->
 				<!-- </td> -->
 			<!-- </tr> -->
-		</table>
-	</nav>
+		<!--/table-->
+	<!--/nav-->
 		
 	<!-- Mask for when settings is open -->
 	<div id="c-mask" class="c-mask"></div>
@@ -413,8 +460,8 @@
 
 </script>
 
-<script src="menu.js"></script>
-<script>
+<!--script src="menu.js"></script-->
+<!--script>
   /**
    * Slide top menu instantiation and action.
    */
@@ -431,6 +478,6 @@
     slideTop.open();
   });
 
-</script>
+</script-->
   </body>
 </html>
