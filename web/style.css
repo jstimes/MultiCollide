@@ -434,7 +434,7 @@ img {
   }
   
   #rightSidePanel {
-	margin-top: 65px;
+	margin-top: 75px;
 	margin-left: 5px;
 	float: right;
 	overflow-y: scroll;
@@ -491,6 +491,10 @@ img {
 	width: 100%;
 	font-style: italic;
 	font-weight: bold;
+  }
+  
+  .tab-div {
+      /* min-height: 500px; */
   }
   
   .centered-div {

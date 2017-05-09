@@ -8,6 +8,7 @@ function multicollide_init() {
 	$("#shapesAccordion").accordion({
 	  collapsible: true,
 	  //heightStyle: "fill",
+      heightStyle: 'panel',
       fillSpace: true,
       //autoHeight: true,
 	});
@@ -203,7 +204,7 @@ function multicollide_init() {
 			"<li><a href='#orientation'>Orientation</a></li>" +
 			"<li><a href='#movement'>Velocities</a></li></ul>" +
 			
-			"<div id='orientation'>" +
+			"<div id='orientation' class='tab-div'>" +
 			"<b>Position:</b><br>" +
 			"x: <input style='width:50px' type='text' class='positionx shapeData " + shapeName + "' value='" + shape["positionx"] + "'><br>" +
 			"y: <input style='width:50px' type='text' class='positiony shapeData " + shapeName + "'><br>";
@@ -228,7 +229,7 @@ function multicollide_init() {
 			
 			"</div>" +
 	
-			"<div id='physical'>" +
+			"<div id='physical' class='tab-div'>" +
 			"<b>Scale: </b><input style='width:50px' type='text' class='scale shapeData " + shapeName + "'><br><br>" +
 	
 			"<b>Mass: </b><input style='width:50px' type='text' class='mass shapeData " + shapeName + "'><br><br>" +
@@ -237,7 +238,7 @@ function multicollide_init() {
 			"<span class='angularInertia shapeData " + shapeName + "'></span><br><br>" +
 			"</div>" + 
 			
-			"<div id='movement'>" +
+			"<div id='movement' class='tab-div'>" +
 			"<b>Velocity:</b><br>" +
 			"x: <input style='width:50px' type='text' class='velocityx shapeData " + shapeName + "'><br>" +
 			"y: <input style='width:50px' type='text' class='velocityy shapeData " + shapeName + "'><br>";
@@ -268,7 +269,7 @@ function multicollide_init() {
 			html += "<!--input type='button' class='duplicateShape' value='Add Duplicate'-->" +
 			"</div>" + 
 			
-			"</div></div>";
+			"</div>";
 			
 		$('#shapesAccordion').append(html);		
 		
@@ -1152,9 +1153,9 @@ function multicollide_update() {
 		var html = "<h4 id='impactVisualizations'>A Collision Occurred</h4>" + 
 			"<div id='graphsContainer' height='520px'>";
 			
-            html += "<br><br><div style='text-align: center;' class='centered-div'>" +
+            html += "<br><div style='text-align: center;' class='centered-div'>" +
                 "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Continue'>" +
-				"<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Restart'></div><br><br>";
+				"<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Restart'></div><br>";
                 
 			if(showImpulseGraph){
 				html += "<p class='graphLabel'>Impulse Accumulation</p>" + 
@@ -1218,7 +1219,6 @@ function multicollide_update() {
 		var accord = $('#shapesAccordion');
 		accord.append(html);
 		accord.accordion("refresh");
-		$(".svg-containger").attr('margin', '0 auto');
 		// $("#rightSidePanel").attr('height', 400);
 		// accord.attr('height', 400);
 		
