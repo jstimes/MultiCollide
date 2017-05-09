@@ -76,8 +76,8 @@ h6 {
   
 ----------------------------------------------------------------------------- */
 a {
-  color: #28aadc;
-  text-decoration: none;
+  color: #00648a; 
+  /* text-decoration: none; */
 }
 
 a:hover {
@@ -131,6 +131,7 @@ img {
 .dropdown {
     position: relative;
     display: inline-block;
+    z-index: 99;
     height: 100%;
 }
 
@@ -416,9 +417,10 @@ img {
   
   #mainContent {
 	float: left;
-	margin-top: 65px;
+	margin-top: 75px;
 	width: 300px;
 	height: 90%;
+    z-index: 1;
   }
   
   #canvas {
@@ -469,12 +471,13 @@ img {
  
   
   #leftSidePanel {
-	margin-top: 65px;
+	margin-top: 75px;
 	margin-left: 5px;
 	margin-right: 5px;
 	/*overflow-y: scroll;*/
 	width: 150px;
 	float: left;
+    z-index: 1;
   }
   
   .bottom {
