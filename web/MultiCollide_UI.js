@@ -1055,7 +1055,7 @@ function multicollide_update() {
 			
 		// });
 		
-		$("#impulseContinueBtn").click();
+		$(".impulseContinueBtn").click();
 	}
     else {
 		// console.log("window ht: " + window.innerHeight);
@@ -1152,6 +1152,10 @@ function multicollide_update() {
 		var html = "<h4 id='impactVisualizations'>A Collision Occurred</h4>" + 
 			"<div id='graphsContainer' height='520px'>";
 			
+            html += "<br><br><div style='text-align: center;' class='centered-div'>" +
+                "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Continue'>" +
+				"<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Restart'></div><br><br>";
+                
 			if(showImpulseGraph){
 				html += "<p class='graphLabel'>Impulse Accumulation</p>" + 
 				"<div id='graph1'  height='230px' class='centered-div'></div><br><br>";
@@ -1206,9 +1210,10 @@ function multicollide_update() {
 				"<tr><td class='postImpactCell'>End of Sliding</td><td class='postImpactCell'>" + endOfSliding + "</td></tr>" +
 				"<tr><td class='postImpactCell'>End of Compression</td><td class='postImpactCell'>" + endOfCompression + "</td></tr></table>";
 				
-				html += "<br><br><div class='centered-div'><input type='button' class='ui-button ui-widget ui-corner-all' id='impulseContinueBtn' value='Continue'>" +
-				"<input type='button' class='ui-button ui-widget ui-corner-all' id='impulseRestartBtn' value='Restart'></div>" +
-			"</div>";
+				html += "<br><br><div style='text-align: center;' class='centered-div'>" +
+                    "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Continue'>" +
+                    "<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Restart'></div><br><br>" +
+                "</div>";
 		
 		var accord = $('#shapesAccordion');
 		accord.append(html);
@@ -1217,14 +1222,14 @@ function multicollide_update() {
 		// $("#rightSidePanel").attr('height', 400);
 		// accord.attr('height', 400);
 		
-		$("#impulseContinueBtn").click(function() {
+		$(".impulseContinueBtn").click(function() {
 			stopVisualizations();
 			_continueImpulseOnClick();
 			$("#graphsContainer").remove();
 			$("#impactVisualizations").remove();
 		});
 		
-		$("#impulseRestartBtn").click(function() {
+		$(".impulseRestartBtn").click(function() {
 			stopVisualizations();
 			if(showImpulseGraph) {
 				$("#graph1").empty();
