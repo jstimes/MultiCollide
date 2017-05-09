@@ -106,12 +106,117 @@ img {
 
 /* Jacob's Styling: */
 
+.removeButton {
+	
+	float: right;
+	margin-right: 3px;
+	border-radius: 3px;
+	padding-left: 3px;
+	padding-right: 3px;
+	font-size: 14px;
+	color: white;
+	background-color: grey;
+}
+.removeButtonHover {
+	background-color: red;
+}
+
+.duplicateButton {
+	float:right;
+	margin-right: 5px;
+	padding-top: 2px;
+	padding-bottom: 2px;
+	padding-left: 3px;
+	padding-right: 3px;
+	border-radius: 3px;
+	font-size: 10px;
+	color: white;
+	background-color: grey;
+}
+
+.duplicateButtonHover {
+	background-color: green;
+}
+
+
+
+.angularInertiaMatrix {
+	margin-left: 15px;
+	margin-top: 3px;
+}
+
+/* From: http://enjoycss.com/gallery/shapes/gn */
+.close-button {
+  display: inline-block;
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  width: 0.2em;
+  height: 0.2em;
+  position: relative;
+  border: none;
+  -webkit-border-radius: 1em;
+  border-radius: 1em;
+  font: normal 8em/normal Arial, Helvetica, sans-serif;
+  color: rgba(0,0,0,1);
+  -o-text-overflow: clip;
+  text-overflow: clip;
+  background: #1abc9c;
+  float: right;
+}
+
+.close-button::before {
+  display: inline-block;
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  width: 0.12em;
+  height: 0.027em;
+  position: absolute;
+  content: "";
+  top: 0.08em;
+  left: 0.0412em;
+  border: none;
+  font: normal 100%/normal Arial, Helvetica, sans-serif;
+  color: rgba(0,0,0,1);
+  -o-text-overflow: clip;
+  text-overflow: clip;
+  background: #ffffff;
+  text-shadow: none;
+  -webkit-transform: rotateZ(45deg)   ;
+  transform: rotateZ(45deg)   ;
+}
+
+.close-button::after {
+  display: inline-block;
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  width: 0.12em;
+  height: 0.027em;
+  position: absolute;
+  content: "";
+  top: 0.08em;
+  left: 0.0412em;
+  border: none;
+  font: normal 100%/normal Arial, Helvetica, sans-serif;
+  color: rgba(0,0,0,1);
+  -o-text-overflow: clip;
+  text-overflow: clip;
+  background: #ffffff;
+  text-shadow: none;
+  -webkit-transform: rotateZ(-45deg)   ;
+  transform: rotateZ(-45deg)   ;
+}
+
 
   .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
   div.emscripten { text-align: center; }      
   div.emscripten_border { border: 1px solid black; }
   /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
   canvas.emscripten { border: 0px none; }
+  
+  
 
   #emscripten_logo {
 	display: inline-block;
@@ -126,7 +231,7 @@ img {
 		position: absolute;
 		top: 0;
 		border: 1px solid #000;
-		width: 6px;
+		width: 12px;
 		height: 100%;
 	}
 	.matrix:before {
@@ -137,6 +242,15 @@ img {
 		right: -6px;
 		border-left: 0;
 	}
+    
+   .angularInertiaMatrix table {
+        border-collapse: separate;
+        border-spacing: 10px 40px;
+    }
+
+    .angularInertiaMatrix td {
+        padding: 5px 10px;
+    }
 
   .spinner {
 	height: 30px;
@@ -207,35 +321,35 @@ img {
 		width: 30px;
 }
 
-  #output {
-	width: 100%;
-	height: 200px;
-	margin: 0 auto;
-	margin-top: 10px;
-	border-left: 0px;
-	border-right: 0px;
-	padding-left: 0px;
-	padding-right: 0px;
-	display: block;
-	background-color: black;
-	color: white;
-	font-family: 'Lucida Console', Monaco, monospace;
-	outline: none;
-  }
+  /* #output { */
+	/* width: 100%; */
+	/* height: 200px; */
+	/* margin: 0 auto; */
+	/* margin-top: 10px; */
+	/* border-left: 0px; */
+	/* border-right: 0px; */
+	/* padding-left: 0px; */
+	/* padding-right: 0px; */
+	/* display: block; */
+	/* background-color: black; */
+	/* color: white; */
+	/* font-family: 'Lucida Console', Monaco, monospace; */
+	/* outline: none; */
+  /* } */
   
   #top {
 	position: absolute;
 	left:0; right:0; top:0;
 	margin-left: 5px;
 	margin-top: 5px;
-	height: 50px;
+	height: 65px;
   }
   
   #mainContent {
 	float: left;
-	margin-top: 50px;
+	margin-top: 65px;
 	width: 300px;
-	height: 100%;
+	height: 90%;
   }
   
   #canvas {
@@ -249,15 +363,44 @@ img {
   }
   
   #rightSidePanel {
-	margin-top: 50px;
+	margin-top: 65px;
 	margin-left: 5px;
 	float: right;
 	overflow-y: scroll;
 	width: 320px;
+    height: 100%;
+	/* height: 640px;  height has no effect since it starts empty*/
   }
   
+  #shapesAccordion {
+	  /* height: 600px; */
+      height: 100%;
+  }
+  
+  #shapesAccordion .ui-accordion-content { padding: 0; }
+  
+  #shapesAccordion .ui-tabs-active {
+	  background: #fff;
+  }
+  
+  *:focus {
+    outline: none;
+    -moz-box-shadow: none;
+    -webkit-box-shadow: none;
+    box-shadow: none;
+}
+  
+   #shapesAccordion .ui-tabs .ui-tabs-nav li.ui-tabs-active a {
+    color: #000;
+  }
+  
+  .removeShape {
+	  margin-left: 100px;
+  }
+ 
+  
   #leftSidePanel {
-	margin-top: 50px;
+	margin-top: 65px;
 	margin-left: 5px;
 	margin-right: 5px;
 	/*overflow-y: scroll;*/

@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>MultiCollide</title>
-    <link rel="stylesheet" href="style.css">
 	
 	  <script src='OESVertexArrayObject-polyfill.js'></script>
 	
@@ -22,25 +21,40 @@
 	  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 	  <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 	
-	<style>
-  .ui-tabs-vertical { }
-  .ui-tabs-vertical .ui-tabs-nav { padding: .2em .2em .2em .2em; float: left; width: 12em;}
-  .ui-tabs-vertical .ui-tabs-nav li { width: 100%; clear: left; border-bottom-width: 1px !important; border-right-width: 0 !important; margin: 0 -1px .2em 0; }
-  .ui-tabs-vertical .ui-tabs-nav li a { display:block; }
-  .ui-tabs-vertical .ui-tabs-nav li.ui-tabs-active { padding-bottom: .2; padding-right: .2em; border-right-width: 1px; }
-  .ui-tabs-vertical .ui-tabs-panel { float: left; padding: 1em; }
-  
-  .ui-tabs-vertical .ui-tabs-nav li a { width: 100%; }
-  </style>
   </head>
   <body>
 	
     <div id='o-wrapper' class='o-wrapper'>
 	
-	<div id='top'>
+	<div id='top' style='margin-bottom: 12px;'>
 		<span style='font-size: 22px;'>MultiCollide: A rigid body impact simulator</span> &nbsp;
 		<a href='#' id="c-button--slide-top" >Settings</a>&nbsp; | &nbsp;
 		<a href='documentation.html'>Documentation & Issues</a>
+		
+		<!--span style='margin-left: 400px;'>
+			<label>&mu; (friction coefficient):&nbsp;<input type='text' id='friction' size='5'></label>
+			<label style='margin-left: 10px;'>e (restitution coefficient):&nbsp;<input type='text' id='restitution' size='5'></label>
+		</span-->
+        
+        <div id='constantControls' style= 'float: right; margin-right: 95px;'>
+            <table>
+                <tr>
+                    <td>
+                        <label><b>&mu; (friction coefficient):&nbsp;</b></label></td>
+                            <td>
+                            <input type='text' id='friction' size='3'>
+                        
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label><b>e (restitution coefficient):&nbsp;</b></label></td>
+                            <td><input type='text' id='restitution' size='3'>
+                        
+                    </td>
+                </tr>
+            </table>
+        </div>
 	</div>
 
      <div id='leftSidePanel'>
@@ -53,7 +67,7 @@
 				<li id='addSuperquadricBtn'><div>Superquadric</div></li>
 				<li id='addCustomSuperquadricBtn'><div>Custom Superquadric</div></li>
 				<li id='addMeshBtn'><div>Tetrahedral Mesh</div></li>
-				<li id='addIcoBtn'><div>Set Up Icosahedron Example</div></li>
+				<li id='addIcoBtn'><div>Icosa-Tetra Collision</div></li>
 				</ul>
 			</li>
 		</ul>
@@ -68,6 +82,9 @@
 			</li>
 		</ul>
 		<br>
+		<input type='button' id='uploadSceneBtn' class='ui-button ui-widget ui-corner-all main-button' value='Upload Scene'>
+		<br>
+		<br>
 		 <input type='button' class='ui-button ui-widget ui-corner-all main-button' id='run' value='Run'><br>
 		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='reset' value='Reset Scene'><br>
 		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='resetCamera' value='Reset Camera'>
@@ -75,19 +92,19 @@
 			<br><br>
 			<span><b>Cursor state:</b></span><br>
 			<label class='cursor-label'>
-			<input class='cursorState' type='radio' name='mode' id='translate' checked>Translate
+			<input class='cursorState icoDisable' type='radio' name='mode' id='translate' checked>Translate
 			</label><br>
 			<label class='cursor-label'>
-			<input class='cursorState' type='radio' name='mode' id='rotate'>Rotate
+			<input class='cursorState icoDisable' type='radio' name='mode' id='rotate'>Rotate
 			</label><br>
 			<label class='cursor-label'>
-			<input class='cursorState' type='radio' name='mode' id='scale'>Scale
+			<input class='cursorState icoDisable' type='radio' name='mode' id='scale'>Scale
 			</label><br>
 			<label class='cursor-label'>
-			<input class='cursorState' type='radio' name='mode' id='velocity'>Velocity
+			<input class='cursorState icoDisable' type='radio' name='mode' id='velocity'>Velocity
 			</label><br>
-			<label class='cursor-label'>
-			<input class='cursorState' type='radio' name='mode' id='angularVelocity'>Angular 
+			<label class='cursor-label' class='hideIn2D'>
+			<input class='cursorState icoDisable' type='radio' name='mode' id='angularVelocity'>Angular 
 			Velocity
 			</label>
 		<br><br>
@@ -99,9 +116,15 @@
 			<label class='camera-label'>
 			<input class='cursorState' type='radio' name='cameraMode' id='cameraZoom'>Zoom
 			</label><br>
-			<label id='cameraDomToHide' class='camera-label'>
+			<label id='cameraDomToHide' class='camera-label hideIn2D'>
 			<input class='cursorState' type='radio' name='cameraMode' id='cameraRotate'>Rotate
 			</label>
+			
+		<br><br>
+		<b>Axes Legend:</b><br>
+		<span><span style='color: red;'>Red - </span>X axis</span><br>
+		<span><span style='color: green;'>Green - </span>Y axis</span><br>
+		<span class='hideIn2D'><span style='color: blue;'>Blue - </span>Z axis</span><br>
 	</div>
 
 <div id='customSuperquadricModal' title='Create Custom Superquadric'>
@@ -120,14 +143,24 @@
 	<input type='button' id='addPolygon' value='Add' >
 	<br><hr>
 	<b>Input Vertices: </b><br>
+	<!--
 	<ol id='customVerticesList'>
 		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
 		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
 		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
 	</ol>
 	<input type='button' id='addAnotherVertexBtn' value='Add Another Vertex'>
-	<input type='button' id='removeVertexBtn' value='Remove Last Vertex'>
-	<input type='button' id='addCustomPolygonBtn' value='Add Shape'>
+	<input type='button' id='removeVertexBtn' value='Remove Last Vertex'>-->
+	<!-- <span>Enter vertices in counter-clockwise order, one per line</span><br> -->
+	<!-- <textarea rows='4' cols='20' id='customVerticesTextArea' placeholder='x, y'></textarea><br> -->
+	<!-- <input type='button' id='addCustomPolygonBtn' value='Add Shape'> -->
+    <span>Click in the canvas to start, then click again for each vertex, and close the shape by clicking lastly at the original vertex.</span><br>
+    <input type='button' id='resetCustomPolygonCanvasBtn' value='Reset'>
+    <input type='button' id='addCustomPolygonCanvasBtn' value='Add' disabled><br><br>
+    <canvas id='polygonCanvas' width="200" height="200" style='border: 1px solid red;'>
+    
+    </canvas>
+
 </div>
 
 <div id='meshModal' title='Add Tetrahedral Mesh'>
@@ -137,15 +170,42 @@
 	<input type='button' value='Submit' id='submitMeshBtn'>
 </div>
 
-<div id='impactSettingsModal' title='Impact Settings'>
+<div id='uploadSceneModal' title='Upload Scene'>
+
+	<hr><label>Upload scene configuration .csv file (press 'Save Scene Setup' to generate scene configuration files):
+	<input type='file' value='Choose Scene File' id='sceneFileUpload'></label><br><br><br><br>
+	<input type='button' value='Submit' id='submitSceneBtn'>
+</div>
+
+<!--div id='impactSettingsModal' title='Impact Settings'>
 	Friction Coefficient (<i>&mu;</i>): <input type='text' id='friction'><br><br>
 	Restitution Coefficient (<i>e</i>): <input type='text' id='restitution'><br><br>
 	<!--input type='button' id='impactSettingsSaveBtn' value='Save' -->
-</div>
+<!--/div-->
 	
 	<div id='mainContent'>
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 	</div>
+    
+    <!-- <div id='constantControls' style= 'float: right;'> -->
+        <!-- <table> -->
+            <!-- <tr> -->
+				<!-- <td> -->
+					<!-- <!--input type='button' id='impactSettingsBtn' value='Impact Settings'--> 
+					<!-- <label><b>&mu; (friction coefficient):&nbsp;</b> -->
+						<!-- <input type='text' id='friction' size='5'> -->
+					<!-- </label> -->
+				<!-- </td> -->
+            <!-- </tr> -->
+            <!-- <tr> -->
+				<!-- <td> -->
+					<!-- <label><b>e (restitution coefficient):&nbsp;</b> -->
+						<!-- <input type='text' id='restitution' size='5'> -->
+					<!-- </label> -->
+				<!-- </td> -->
+			<!-- </tr> -->
+        <!-- </table> -->
+    <!-- </div> -->
 	
 	<div id='sceneShapesShowBtnDiv' style='display: none;'>
 		<input type='button' class='ui-button ui-widget ui-corner-all' 
@@ -153,11 +213,31 @@
 	</div>
 	
 	<div id='rightSidePanel'>
+        <!-- <div id='constantControls' > -->
+            <!-- <table> -->
+                <!-- <tr> -->
+                    <!-- <td> -->
+                        <!-- <label><b>&mu; (friction coefficient):&nbsp;</b> -->
+                            <!-- <input type='text' id='friction' size='5'> -->
+                        <!-- </label> -->
+                    <!-- </td> -->
+                <!-- </tr> -->
+                <!-- <tr> -->
+                    <!-- <td> -->
+                        <!-- <label><b>e (restitution coefficient):&nbsp;</b> -->
+                            <!-- <input type='text' id='restitution' size='5'> -->
+                        <!-- </label> -->
+                    <!-- </td> -->
+                <!-- </tr> -->
+            <!-- </table> -->
+        <!-- </div> -->
 	  <div id='sceneShapesDiv'>
-		<span>Scene Shapes </span>
+		<span>Scene Shapes </span>&nbsp;&nbsp;
 		<input type='button' class='ui-button ui-widget ui-corner-all' 
-		style='font-size: 10px;' id='sceneShapesHideBtn' value='Hide'>
-		<div id='shapesAccordion'>
+		style='font-size: 10px;' id='sceneShapesHideBtn' value='Hide'>&nbsp;&nbsp;
+		<input type='button' class='ui-button ui-widget ui-corner-all' 
+		style='font-size: 10px;' id='saveSceneBtn' value='Save Scene Setup'>
+		<div style='margin-top: 3px;' id='shapesAccordion'>
 		</div>
 	  </div>
 		
@@ -203,23 +283,21 @@
 					<label><input type='checkbox' id='showVelocity' value='true'>Sliding Velocity Curve (Hodograph)</label><br>
 				</td>
 			</tr>
-			<tr>
-				<td>
-				</td>
-				<td>
-					<input type='button' id='impactSettingsBtn' value='Impact Settings'>
-				</td>
-				<td>
-					
-				</td>
-				
-				<td>
-				
-				</td>
-				<td>
-				
-				</td>
-			</tr>
+			<!-- <tr> -->
+				<!-- <td> -->
+				<!-- </td> -->
+				<!-- <td colspan=2> -->
+					<!-- <!--input type='button' id='impactSettingsBtn' value='Impact Settings'-->
+					<!-- <label><b>&mu; (friction coefficient):&nbsp;</b> -->
+						<!-- <input type='text' id='friction' size='5'> -->
+					<!-- </label> -->
+				<!-- </td> -->
+				<!-- <td colspan=2> -->
+					<!-- <label style='margin-left: 10px;'><b>e (restitution coefficient):&nbsp;</b> -->
+						<!-- <input type='text' id='restitution' size='5'> -->
+					<!-- </label> -->
+				<!-- </td> -->
+			<!-- </tr> -->
 		</table>
 	</nav>
 		
@@ -321,6 +399,9 @@
 		document.body.appendChild(script);
 		
 		script.onload = function() {
+			if(!multicollide_update){
+				alert("SE");
+			}
 			multicollide_init();
 		};
 

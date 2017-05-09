@@ -6,7 +6,10 @@ function multicollide_init() {
 	initSettings();
 		  
 	$("#shapesAccordion").accordion({
-	  collapsible: true
+	  collapsible: true,
+	  //heightStyle: "fill",
+      fillSpace: true,
+      //autoHeight: true,
 	});
 	
 	var customSuperquadricDialog = $("#customSuperquadricModal").dialog({
@@ -26,8 +29,8 @@ function multicollide_init() {
 	
 	var customPolygonDialog = $("#customPolygonModal").dialog({
 		autoOpen: false,
-		height: 400,
-		width: 400,
+		height: 600,
+		width: 800,
 		modal: true,	
 		buttons: {
 			Cancel: function() {
@@ -52,6 +55,18 @@ function multicollide_init() {
 		},
 		close: function() {
 			numCustomVertices = 3;
+		}
+	});
+	
+	var uploadSceneDialog = $("#uploadSceneModal").dialog({
+		autoOpen: false,
+		height: 400,
+		width: 400,
+		modal: true,	
+		buttons: {
+			Cancel: function() {
+			  uploadSceneDialog.dialog( "close" );
+			}
 		}
 	});
 	
@@ -80,7 +95,14 @@ function multicollide_init() {
 	$("#addCustomPolygonBtn").click(function() {
 		
 		var pts = [];
-		var lastPt = {};
+		//var lastPt = {};
+		var ptsText = $("#customVerticesTextArea").val();
+		var ptsTextArr = ptsText.split(/\r?\n/);
+		for(var i=0; i<ptsTextArr.length; i++){
+			var xyArr = ptsTextArr[i].split(',');
+			pts.push({x: parseFloat(xyArr[0]), y: parseFloat(xyArr[1])});
+		}
+		/*
 		$(".customVertices").each(function() {
 			if($(this).hasClass('xcoord')){
 				lastPt = {x: $(this).val() };
@@ -89,7 +111,7 @@ function multicollide_init() {
 				lastPt.y = $(this).val();
 				pts.push(lastPt);
 			}
-		});
+		});*/
 		
 		//console.log(pts);
 		_createNewCustomPolygon();
@@ -97,6 +119,7 @@ function multicollide_init() {
 			_addCustomPolygonVertex(pts[i].x, pts[i].y);
 		}
 		_doneCreatingCustomPolygon();
+		addShape();
 	});
 	
 	$("#addAnotherVertexBtn").click(function(){
@@ -114,12 +137,29 @@ function multicollide_init() {
 		$("#customVerticesList li").last().remove();
 	});
 	
-	$("#impactSettingsBtn").click(function() {
-		$("#friction").val(_getShapeFriction());
-		$("#restitution").val(_getShapeRestitution());
+	// $("#impactSettingsBtn").click(function() {
+		// $("#friction").val(_getShapeFriction());
+		// $("#restitution").val(_getShapeRestitution());
 		
-		impactSettingsDialog.dialog("open");
-		slideTop.close();
+		// impactSettingsDialog.dialog("open");
+		// slideTop.close();
+	// });
+	
+	$("#uploadSceneBtn").click(function() {
+		uploadSceneDialog.dialog("open");
+	});
+	
+	$("#submitSceneBtn").click(function(){
+		var selectedFile = document.getElementById('sceneFileUpload').files[0];
+		
+		var reader = new FileReader ();
+		reader.onloadend = function (ev) { 
+			var fileContents = this.result;
+			parseSceneCSV(fileContents);
+			uploadSceneDialog.dialog("close");
+		
+		};
+		reader.readAsText(selectedFile);
 	});
 	
 	$("#3DaddShapeMenu").menu().on("mouseleave", function(){
@@ -148,7 +188,16 @@ function multicollide_init() {
 		 
 		 var sectionId = "shapeAccordion" + shapeName;
 		 
-		 var html = "<h4 id='shapeHeader" + shapeName + "'>" + shapeName + "</h4>" +
+		 var html = "<h4 id='shapeHeader" + shapeName + "'>" + shapeName;
+		    //"<div class='close-button'></div>" +
+			//<input type='button' value='Remove' class='removeShape close-button'/>
+			
+			if(!icoMode){
+				html += "<span class='removeButton'>&times;</span>";
+				//html += "<span class='duplicateButton'>&#43; Duplicate</span>";
+			}
+			
+			html += "</h4>" +
 			"<div class='tabs' id='" + sectionId + "'>" +
 			"<ul><li><a href='#physical'>Physical Constants</a></li>" +
 			"<li><a href='#orientation'>Orientation</a></li>" +
@@ -165,10 +214,12 @@ function multicollide_init() {
 			
 			html += "<br><br>" +
 			
-			"<b>Rotation</b><br>";
+			"<b>Rotation:</b><br>";
 			
 			if(!using2D) {
-				html += "Axis x: <input style='width:50px' type='text' class='rotationAxisX shapeData " + shapeName + "' value='0'><br>" +
+				html += "Axis x: <input style='width:50px' type='text' class='rotationAxisX shapeData " + shapeName + "' value='0'>" +
+				//"<span class='normalizedRotAxisX'>0</span>"+
+				"<br>" +
 				"Axis y: <input style='width:50px' type='text' class='rotationAxisY shapeData " + shapeName + "' value='0'><br>" +
 				"Axis z: <input style='width:50px' type='text' class='rotationAxisZ shapeData " + shapeName + "' value='0'><br>";
 			}
@@ -182,11 +233,9 @@ function multicollide_init() {
 	
 			"<b>Mass: </b><input style='width:50px' type='text' class='mass shapeData " + shapeName + "'><br><br>" +
 			
-			"<input type='button' value='Compute Angular Inertia' class='computeInertia " + shapeName + "'><br>" +
+			//"<input type='button' value='Compute Angular Inertia' class='computeInertia " + shapeName + "'><br>" +
 			"<span class='angularInertia shapeData " + shapeName + "'></span><br><br>" +
 			"</div>" + 
-
-			
 			
 			"<div id='movement'>" +
 			"<b>Velocity:</b><br>" +
@@ -196,6 +245,8 @@ function multicollide_init() {
 			if(!using2D) {
 				html += "z: <input style='width:50px' type='text' class='velocityz shapeData " + shapeName + "'>";
 			}
+            
+            html += "<br>speed (m/s): <span class='velocityspeed " + shapeName + "'>0</span>";
 			
 			html += "<br><br>" + 
 			"<b>Angular Velocity:</b><br>";
@@ -205,33 +256,82 @@ function multicollide_init() {
 				"x: <input style='width:50px' type='text' class='angularvelocityx shapeData " + shapeName + "'><br>" +
 				"y: <input style='width:50px' type='text' class='angularvelocityy shapeData " + shapeName + "'><br>" +
 				"z: <input style='width:50px' type='text' class='angularvelocityz shapeData " + shapeName + "'><br>";
+				html += "speed (deg/s): <span style='width:50px' type='text' class='angularvelocityspeed " + shapeName + "'>0</span><br><br>";
+			}
+			else {
+				html += "speed (deg/s): <input style='width:50px' type='text' class='angularvelocityy shapeData " + shapeName + "'><br>";
 			}
 			
-			html += "speed (deg/s): <input style='width:50px' type='text' class='angularvelocityspeed shapeData " + shapeName + "'><br><br>" +
-			"<input type='button' class='removeShape' value='Remove Shape'>" +
-			"<!--input type='button' class='duplicateShape' value='Add Duplicate'-->" +
+			//html += "speed (deg/s): <input style='width:50px' type='text' class='angularvelocityspeed shapeData " + shapeName + "'><br><br>" +
+			
+			
+			html += "<!--input type='button' class='duplicateShape' value='Add Duplicate'-->" +
 			"</div>" + 
 			
 			"</div></div>";
 			
-		$('#shapesAccordion').append(html);
+		$('#shapesAccordion').append(html);		
 		
-		
-		$("#shapesAccordion :input:not(:button)").spinner({
-			step: 0.001,
-			numberFormat: "n"
-		});
-		
-		$("#" + sectionId + " .removeShape").click(function() {
+		$('#shapesAccordion .removeButton').click(function(event) {
+			event.stopImmediatePropagation();
+			event.preventDefault();
+			
 			var namePtr = allocate(intArrayFromString(shapeName), 'i8', ALLOC_NORMAL);
 			var index = _getShapeIndexForName(namePtr);
 			_removeShape(index);
 			$("#shapeAccordion" + shapeName).remove();
 			$("#shapeHeader" + shapeName).remove();
 			_free(namePtr);
-			
-			$('#shapesAccordion').refresh();
 		});
+		
+		$('#shapesAccordion .removeButton').hover(
+			function() {
+				$(this).addClass('removeButtonHover');
+			},
+			function() {
+				$(this).removeClass('removeButtonHover');
+			}
+		);
+		
+		$('#shapesAccordion .duplicateButton').click(function(event) {
+			event.stopImmediatePropagation();
+			event.preventDefault();
+			
+			//TODO
+		});
+		
+		$('#shapesAccordion .duplicateButton').hover(
+			function() {
+				$(this).addClass('duplicateButtonHover');
+			},
+			function() {
+				$(this).removeClass('duplicateButtonHover');
+			}
+		);
+		
+		$("#shapesAccordion :input:not(:button)").spinner({
+			step: 0.001,
+			numberFormat: "n"
+		});
+		
+		//$("#" + sectionId + " .removeShape").button();
+		// $("#" + sectionId + " .removeShape").click(function(event){
+			// event.stopPropagation(); //Without this line and the next,
+			// event.preventDefault(); 	// callback goes only to accordion, skips btn 
+			// alert("clicked!");
+		// });
+
+		// $("#" + sectionId + " .removeShape").click(function() {
+			// alert("Hey");
+			// var namePtr = allocate(intArrayFromString(shapeName), 'i8', ALLOC_NORMAL);
+			// var index = _getShapeIndexForName(namePtr);
+			// _removeShape(index);
+			// $("#shapeAccordion" + shapeName).remove();
+			// $("#shapeHeader" + shapeName).remove();
+			// _free(namePtr);
+			
+			// //$('#shapesAccordion').refresh();
+		// });
 		
 		$("#" + sectionId + " .duplicateShape").click(function() {
 			var namePtr = allocate(intArrayFromString(shapeName), 'i8', ALLOC_NORMAL);
@@ -242,7 +342,7 @@ function multicollide_init() {
 			_free(namePtr);
 		});
 		
-		$("#" + sectionId + " .computeInertia").click(function() {
+		//$("#" + sectionId + " .computeInertia").click(function() {
 			var namePtr = allocate(intArrayFromString(shapeName), 'i8', ALLOC_NORMAL);
 			var index = _getShapeIndexForName(namePtr);
 			_free(namePtr);
@@ -257,29 +357,36 @@ function multicollide_init() {
 			var zy = _getShapeAngularInertiaZY(index);
 			var zz = _getShapeAngularInertiaZZ(index);
 			
-			var table = "Angular Inertia: <br><table class='matrix'>" + 
-				"<tr>" + 
-					"<td>" + xx + "</td>" + 
-					"<td>" + xy + "</td>" + 
-					"<td>" + xz + "</td>" + 
-				"</tr>" + 
-				"<tr>" + 
-					"<td>" + yx + "</td>" + 
-					"<td>" + yy + "</td>" + 
-					"<td>" + yz + "</td>" + 
-				"</tr>" + 
-				"<tr>" + 
-					"<td>" + zx + "</td>" + 
-					"<td>" + zy + "</td>" + 
-					"<td>" + zz + "</td>" + 
-				"</tr>" + 
-				"</table>";
-				
-			$("#" + sectionId + " .angularInertia").append(table);
-			$("#" + sectionId + " .computeInertia").hide();
+            if(!using2D){
+                var table = "<span>Angular Inertia: </span><br><br>"+
+                "<table class='matrix angularInertiaMatrix'>" + 
+                    "<tr>" + 
+                        "<td>" + roundNumber(xx) + "</td>" + 
+                        "<td>" + roundNumber(xy) + "</td>" + 
+                        "<td>" + roundNumber(xz) + "</td>" + 
+                    "</tr>" + 
+                    "<tr>" + 
+                        "<td>" + roundNumber(yx) + "</td>" + 
+                        "<td>" + roundNumber(yy) + "</td>" + 
+                        "<td>" + roundNumber(yz) + "</td>" + 
+                    "</tr>" + 
+                    "<tr>" + 
+                        "<td>" + roundNumber(zx) + "</td>" + 
+                        "<td>" + roundNumber(zy) + "</td>" + 
+                        "<td>" + roundNumber(zz) + "</td>" + 
+                    "</tr>" + 
+                    "</table>";
+                $("#" + sectionId + " .angularInertia").append(table);
+            }
+            else {
+				var info = "<span>Moment of inertia:<b> " + roundNumber(xx) + " </b></span>";
+                $("#" + sectionId + " .angularInertia").append(info);  
+            }
 			
-			console.log(shapeName);
-		});
+			//$("#" + sectionId + " .computeInertia").hide();
+			
+			//console.log(shapeName);
+		//});
 		
 		$("#" + sectionId + " .shapeData").on('change textInput input', function () {
 			//Assumes first class is the data label
@@ -307,14 +414,21 @@ function multicollide_init() {
 					_setShapeVelocityZ(index, value);
 				} else if(dataElement === "angularvelocityx"){
 					_setShapeAngularVelocityX(index, value);
+					calculateAngularVelocitySpeed(index, sectionId);
 				} else if(dataElement === "angularvelocityy"){
+					if(using2D){
+						console.log("ok");
+						//value = Math.PI / 6.0; //TODO why no work?
+					}
 					_setShapeAngularVelocityY(index, value);
+					calculateAngularVelocitySpeed(index, sectionId);
 				} else if(dataElement === "angularvelocityz"){
 					_setShapeAngularVelocityZ(index, value);
-				} else if(dataElement === "angularvelocityspeed"){
+					calculateAngularVelocitySpeed(index, sectionId);
+				//} else if(dataElement === "angularvelocityspeed"){
 					//Assume user enters speed in degrees/sec, convert to rads/s 
-					value *= (Math.PI / 180);
-					_setShapeAngularVelocitySpeed(index, value);
+				//	value *= (Math.PI / 180);
+				//	_setShapeAngularVelocitySpeed(index, value);
 				} else if(dataElement === "scale"){
 					_setShapeScale(index, value);
 				} else if(dataElement === "mass"){
@@ -326,6 +440,7 @@ function multicollide_init() {
 					_setShapeRestitution(index, value);
 				}*/ else if(dataElement === "rotationAxisX"){
 					_setShapeRotationAxisX(index, value);
+					calculateNormalizedRotAxis(index, sectionId);
 				}
 				else if(dataElement === "rotationAxisY"){
 					_setShapeRotationAxisY(index, value);
@@ -352,14 +467,17 @@ function multicollide_init() {
 					_setShapeVelocityY(index, value);
 				} else if(dataElement === "angularvelocityx"){
 					_setShapeAngularVelocityX(index, value);
+					calculateAngularVelocitySpeed(index, sectionId);
 				} else if(dataElement === "angularvelocityy"){
 					_setShapeAngularVelocityZ(index, -1.0 * value);
+					calculateAngularVelocitySpeed(index, sectionId);
 				} else if(dataElement === "angularvelocityz"){
 					_setShapeAngularVelocityY(index, value);
-				} else if(dataElement === "angularvelocityspeed"){
+					calculateAngularVelocitySpeed(index, sectionId);
+				//} else if(dataElement === "angularvelocityspeed"){
 					//Assume user enters speed in degrees/sec, convert to rads/s 
-					value *= (Math.PI / 180);
-					_setShapeAngularVelocitySpeed(index, value);
+				//	value *= (Math.PI / 180);
+				//	_setShapeAngularVelocitySpeed(index, value);
 				} else if(dataElement === "scale"){
 					_setShapeScale(index, value);
 				} else if(dataElement === "mass"){
@@ -371,15 +489,19 @@ function multicollide_init() {
 					_setShapeRestitution(index, value);
 				}*/ else if(dataElement === "rotationAxisX"){
 					_setShapeRotationAxisX(index, value);
+					calculateNormalizedRotAxis(index, sectionId);
 				}
 				else if(dataElement === "rotationAxisY"){
 					_setShapeRotationAxisZ(index, -1.0 * value);
+					calculateNormalizedRotAxis(index, sectionId);
 				}
 				else if(dataElement === "rotationAxisZ"){
 					_setShapeRotationAxisY(index, value);
+					calculateNormalizedRotAxis(index, sectionId);
 				}
 				else if(dataElement === "rotationAngle"){
 					_setShapeRotationAngle(index, value);
+					calculateNormalizedRotAxis(index, sectionId);
 				}
 			}
 		});
@@ -388,13 +510,87 @@ function multicollide_init() {
 		   $(this).siblings('input').change();
 		});
 		
-		$(".tabs").tabs().addClass( "ui-tabs-vertical ui-helper-clearfix" );
-		$(".tabs li").removeClass( "ui-corner-top" ).addClass( "ui-corner-left" );
+		$(".tabs").tabs();//.addClass( "ui-tabs-vertical ui-helper-clearfix" );
+		$(".tabs li a").css('padding', "2px");//.removeClass( "ui-corner-top" );//.addClass( "ui-corner-left" );
 		
 		$('#shapesAccordion').accordion("refresh");
+		// $("#shapesAccordion").accordion({ active: clicked });
+		// $("#shapesAccordion .ui-accordion-header").unbind('click');
+		// $("#" + sectionId + " .removeShape").click(function(event) {
+			// event.stopPropagation(); //Without this line and the next,
+			// event.preventDefault(); 	// callback goes only to accordion, skips btn 
+			// alert("clicked!");
+		// });
+		
+		// $("#shapesAccordion .ui-accordion-header").click(function() {
+			// var clicked = $(this).attr("tabindex");
+			// alert("Clicked index: " + clicked);
+			// return;
+			// //var clicked = parseInt($(this).attr("tabindex"));
+			// if(typeof clicked !== "undefined"){
+				// var current = $('#shapesAccordion').accordion('option', 'active');
+				// alert("curr: " + current + " , " + clicked);
+				// if($(this).hasClass('ui-accordion-header-active')){
+					// $("#shapesAccordion").accordion({ active: false });
+				// }
+				// else {
+					// $("#shapesAccordion").accordion({ active: clicked });
+				// }
+			// }
+		// });
+		// $("")
 			
 		//dialog.dialog("close");
 	 }
+     
+     var alreadyClicked = false;
+     var originalClickPos;
+     var prevClickPos;
+     var distanceOffsetFromOriginal = 10;
+     var vertices = [];
+     $("#polygonCanvas").mousedown(function(event){
+            var pos = getCursorPosition(event);
+            vertices.push(pos);
+            if(!alreadyClicked){
+                originalClickPos = pos;
+                prevClickPos = pos;
+                alreadyClicked = true;
+            }
+            else {
+                if(distance(pos, originalClickPos) < distanceOffsetFromOriginal){
+                    pos = originalClickPos; //close the shape
+                    $("#addCustomPolygonCanvasBtn").prop('disabled', false);
+                    vertices.pop();
+                }
+                var canvas = document.getElementById('polygonCanvas');
+                var context = canvas.getContext('2d');
+
+                context.beginPath();
+                context.moveTo(prevClickPos.x, prevClickPos.y);
+                context.lineTo(pos.x, pos.y);
+                context.stroke();
+                
+                prevClickPos = pos;
+            }
+    });
+    
+    $("#resetCustomPolygonCanvasBtn").click(function() {
+        alreadyClicked = false;
+        vertices = [];
+        $("#addCustomPolygonCanvasBtn").prop('disabled', true);
+        var canvas = document.getElementById('polygonCanvas');
+        canvas.width = canvas.width;
+    });
+    
+    $("#addCustomPolygonCanvasBtn").click(function() {
+       _createNewCustomPolygon();
+		for(var i=0; i<vertices.length; i++){
+			_addCustomPolygonVertex(vertices[i].x, vertices[i].y);
+		}
+		_doneCreatingCustomPolygon();
+		addShape(); 
+        
+    });
 	
 	$( ".cursorState" ).checkboxradio();
 	
@@ -451,9 +647,12 @@ function multicollide_init() {
 	});
 	
 	$("#addIcoBtn").click(function() {
+		$('#reset').click();
+		icoMode = true;
 		_AddIcosahedronOnClick();
 		addShape();
-		addShape(2); //Both the tetra and Icosahedron are added
+		addShape(2); //Both the tetra and Icosahedron are added		
+		toggleIcoMode();
 	});
 	
 	$("#addCircleBtn").click(function() {
@@ -546,10 +745,13 @@ function multicollide_init() {
 		if(isSettingUpScene){
 			//Clicked reset:
 			_ResetOnClick();
+			pickedShapeIndex = -1;
 			var myNode = document.getElementById("shapesAccordion");
 			while (myNode.firstChild) {
 				myNode.removeChild(myNode.firstChild);
 			}
+			icoMode = false;
+			toggleIcoMode();
 		}
 		else {
 			//Clicked stop:
@@ -579,10 +781,33 @@ function multicollide_init() {
 	
 	$("#sceneShapesHideBtn").click(function() {
 		$("#rightSidePanel").hide("slide", { direction: "right" }, 1000);
+                $('#constantControls').css({ 'margin-right': '95px' }).animate({
+                    'margin-right': '130px'
+                });   
 		$.when($("#sceneShapesShowBtnDiv").show("slide", { direction: "right" }, 1000)).then(function() {
 			sceneShapesOpen = false;
 			window.dispatchEvent(new Event('resize'));
 		});
+	});
+	
+	$("#saveSceneBtn").click(function() {
+		// var charPtr = _getSceneCSV();
+		// var csv = Pointer_stringify(charPtr);
+		var csv = Module.ccall('getSceneCSV', // name of C function
+        'string');
+		console.log(csv);
+		
+		var csvRows = csv.split(/\r|\n/);
+		console.log(csvRows);
+		var csvString = csvRows.join("\r\n");
+		
+		var a         = document.createElement('a');
+		a.href        = 'data:attachment/csv,' +  encodeURIComponent(csvString);
+		a.target      = '_blank';
+		a.download    = 'multicollide_config.csv';
+
+		document.body.appendChild(a);
+		a.click();
 	});
 	
 	
@@ -617,6 +842,22 @@ function multicollide_init() {
 		  
 }
 
+function distance(pos1, pos2){
+    var dX = pos1.x - pos2.x;
+    var dY = pos1.y - pos2.y;
+    return Math.sqrt(dX*dX + dY*dY);
+}
+
+function getCursorPosition( event) {
+    // var rect = $("#polygonCanvas").getBoundingClientRect();
+    // var x = event.clientX - rect.left;
+    // var y = event.clientY - rect.top;
+    
+     var pos =  { x: event.offsetX, y: event.offsetY };
+    console.log("x: " + pos.x + " y: " + pos.y);
+    return pos;
+}
+
 function clearSelection() {
     if ( document.selection ) {
         document.selection.empty();
@@ -627,6 +868,7 @@ function clearSelection() {
 
 var jacobs_frame = false;
 var sceneShapesOpen = true;
+var icoMode = false;
 
 function multicollide_update() {
 	if(_isNewData()){
@@ -693,22 +935,37 @@ function multicollide_update() {
  
  document.getElementById('translate').onclick = function() {
 		_TranslateOnClick();
+		
+		//Select orientation tab on scene shapes panel
+		$( ".tabs" ).tabs({ active: 1 }); //0 = PC, 1 = Orientation, 2 = Velocities
  }
  
   document.getElementById('rotate').onclick = function() {
 		_RotateOnClick();
+		
+		//Select orientation tab on scene shapes panel
+		$( ".tabs" ).tabs({ active: 1 }); //0 = PC, 1 = Orientation, 2 = Velocities
  }
  
   document.getElementById('scale').onclick = function() {
 		_ScaleOnClick();
+		
+		//Select orientation tab on scene shapes panel
+		$( ".tabs" ).tabs({ active: 0 }); //0 = PC, 1 = Orientation, 2 = Velocities
  }
  
   document.getElementById('velocity').onclick = function() {
 		_VelocityOnClick();
+		
+		//Select orientation tab on scene shapes panel
+		$( ".tabs" ).tabs({ active: 2 }); //0 = PC, 1 = Orientation, 2 = Velocities
  }
  
  document.getElementById('angularVelocity').onclick = function() {
 		_AngularVelocityOnClick();
+		
+		//Select orientation tab on scene shapes panel
+		$( ".tabs" ).tabs({ active: 2 }); //0 = PC, 1 = Orientation, 2 = Velocities
  }
  
  function getShapeData(i){
@@ -763,11 +1020,15 @@ function multicollide_update() {
  
  function updateShapeData() {
 	$("#shapesAccordion div.tabs").each(function(index, divElement) {
-		//console.log("Shape index: " + index);
 		var shapeData = getShapeData(index);
+        
+        var shapeName = Pointer_stringify(_getShapeName(index));
+		var sectionId = "shapeAccordion" + shapeName;
+        calculateAngularVelocitySpeed(index, sectionId);
+        calculateVelocitySpeed(index, sectionId);
+        
 		$(divElement).find("input:not(:button)").each(function() {
 			var dataElement = $(this).attr("class").split(" ")[0];
-			//console.log(dataElement);
 			$(this).spinner("value", shapeData[dataElement]);
 		});
 	});
@@ -1036,6 +1297,9 @@ function multicollide_update() {
  
  function showSceneShapes(callback) {
 	$.when($("#sceneShapesShowBtnDiv").hide("slide", { direction: "right" }, 700)).then(function() {
+        $('#constantControls').css({ 'margin-right': '130px' }).animate({
+                    'margin-right': '95px'
+                });  
 		sceneShapesOpen = true;
 		
 		$("#rightSidePanel").show();
@@ -1100,6 +1364,30 @@ function multicollide_update() {
 	return html;
  }
  
+ function calculateAngularVelocitySpeed(index, sectionId) {
+	var speed = _getShapeAngularVelocitySpeed(index);
+	$('#' + sectionId + ' .angularvelocityspeed').text(roundNumber(speed));
+ }
+ 
+ function calculateVelocitySpeed(index, sectionId) {
+	var x = _getShapeVelocityX(index);
+    var y = _getShapeVelocityY(index);
+    var z = _getShapeVelocityZ(index);
+    var speed = Math.sqrt(x*x + y*y + z*z);
+	$('#' + sectionId + ' .velocityspeed').text(roundNumber(speed));
+ }
+ 
+ function calculateNormalizedRotAxis(index, sectionId) {
+	 var rotX = _getShapeRotationAxisX(index);
+	 var rotY = _getShapeRotationAxisY(index);
+	 var rotZ = _getShapeRotationAxisZ(index);
+	 console.log(index);
+	 console.log('' + rotX + ',' + rotY + ',' + rotZ);
+	 var mag = Math.sqrt(rotX*rotX + rotY*rotY + rotZ*rotZ);
+	 console.log(mag);
+	 $('#' + sectionId + '.normalizedRotAxisX').text(rotX/mag);
+ }
+ 
  var using2D = false;
  
  //Toggles between 2D/3D interface mode
@@ -1110,7 +1398,7 @@ function multicollide_update() {
 		$("#3DaddShapeMenu").show();
 		
 		$("#cameraDomToHide").show();
-		
+		$(".hideIn2D").show();
 		$("#angularVelocity").show();
 		
 		using2D = false;
@@ -1120,14 +1408,192 @@ function multicollide_update() {
 		$("#2DaddShapeMenu").show();
 		$("#3DaddShapeMenu").hide();
 		
-		$("#cameraDomToHide").hide();
-		
-		$("#angularVelocity").hide();
+		//$("#cameraDomToHide").hide();
+		$(".hideIn2D").hide();
+		//$("#angularVelocity").hide();
 		
 		using2D = true;
 	 }
 	 
 	 $("#reset").click();
+ }
+ 
+ /*
+	0 - sphere
+	1 - cube 
+	2 - ellipsoid
+	3 - superquadric
+	4 - custom superquad, a1, a2, a3, e1, e2
+	5 - mesh - all data?
+	6 - circle  
+	7 - triangle
+	8 - square
+	9 - custom poly - all vertices, x1, y1, x2, y2,...
+	10 - icosahedron
+	11 - tetrahedron
+	*/
+ function parseSceneCSV(fileContents) {
+	 
+	 $("#reset").click();
+	 
+	var allRows = fileContents.split(/\r?\n|\r/);
+	
+	var foundFirstShapeLine = false;
+	var foundSceneInfo = false;
+	
+	for(var row = 0; row < allRows.length; row++) {
+		var rowCells = allRows[row].split(',');
+		if(rowCells.length == 0){
+			continue;
+		}
+		if(!foundSceneInfo){
+			var isUsing2D = parseInt(rowCells[0]);
+			var mu = parseFloat(rowCells[1]);
+			var e = parseFloat(rowCells[2]);
+			
+			var simMode = '3D';
+			if(isUsing2D){
+				simMode = '2D';
+			}
+			initDimension(simMode);
+			
+			_setShapeFriction(mu);
+			_setShapeRestitution(e);
+			foundSceneInfo = true;
+		}
+		else {
+			if(!foundFirstShapeLine){
+				var shapeId = parseInt(rowCells[0]);
+				switch(shapeId) {
+					case 0:
+						$('#addSphereBtn').click();
+						break;
+					case 1:
+						$('#addCubeBtn').click();
+						break;
+					case 2:
+						$('#addEllipsoidBtn').click();
+						break;
+					case 3:
+						$('#addSuperquadricBtn').click();
+						break;
+					case 4:
+						var a1 = parseFloat(rowCells[1]);
+						var a2 = parseFloat(rowCells[2]);
+						var a3 = parseFloat(rowCells[3]);
+						var e1 = parseFloat(rowCells[4]);
+						var e2 = parseFloat(rowCells[5]);
+						_createCustomSuperquadric(a1, a2, a3, e1, e2);
+						addShape();
+						break;
+					case 5:
+						//TODO mesh 
+						break;
+					case 6:
+						$('#addCircleBtn').click();
+						break;
+					case 7:
+						$('#addTriangleBtn').click();
+						break;
+					case 8:
+						$('#addSquareBtn').click();
+						break;
+					case 9:
+						_createNewCustomPolygon();
+						for(var cell=1; cell<rowCells.length; cell+=2){
+							var x = parseFloat(rowCells[cell]);
+							var y = parseFloat(rowCells[cell+1]);
+							_addCustomPolygonVertex(x, y);
+						}
+						_doneCreatingCustomPolygon();
+						addShape();
+						break;
+				}
+				foundFirstShapeLine = true;
+			}
+			else {
+				/*
+					if(dataElement === "positionx") {
+					_setShapePositionX(index, value);
+				} else if(dataElement === "positiony"){
+					_setShapePositionZ(index, -1.0 * value);
+				} else if(dataElement === "positionz"){
+					_setShapePositionY(index, value);
+				*/
+				
+				var curShapeIndex = _getNumShapes() -1;
+				foundFirstShapeLine = false;
+				var transX = parseFloat(rowCells[0]);
+				var transY = parseFloat(rowCells[1]);
+				var transZ = parseFloat(rowCells[2]);
+				
+				_setShapePositionX(curShapeIndex, transX);
+				_setShapePositionY(curShapeIndex, transY);
+				_setShapePositionZ(curShapeIndex, transZ);
+				
+				var velX = parseFloat(rowCells[3]);
+				var velY = parseFloat(rowCells[4]);
+				var velZ = parseFloat(rowCells[5]);
+				
+				_setShapeVelocityX(curShapeIndex, velX);
+				_setShapeVelocityY(curShapeIndex, velY);
+				_setShapeVelocityZ(curShapeIndex, velZ);
+				
+				var rotAngle = parseFloat(rowCells[6]);
+				var rotAxisX = parseFloat(rowCells[7]);
+				var rotAxisY = parseFloat(rowCells[8]);
+				var rotAxisZ = parseFloat(rowCells[9]);
+				
+				//_setShapeRotationAngle(curShapeIndex, rotAngle);
+				//_setShapeRotationAxisX(curShapeIndex, rotAxisX);
+				//_setShapeRotationAxisY(curShapeIndex, rotAxisY);
+				//_setShapeRotationAxisZ(curShapeIndex, rotAxisZ);
+				
+				var angVelX = parseFloat(rowCells[10]);
+				var angVelY = parseFloat(rowCells[11]);
+				var angVelZ = parseFloat(rowCells[12]);
+				
+				_setShapeAngularVelocityX(curShapeIndex, angVelX);
+				_setShapeAngularVelocityY(curShapeIndex, angVelY);
+				_setShapeAngularVelocityZ(curShapeIndex, angVelZ);
+				
+				var scaling = parseFloat(rowCells[13]);
+				var mass = parseFloat(rowCells[14]);
+				_setShapeScale(curShapeIndex, scaling);
+				_setShapeMass(curShapeIndex, mass);
+			}
+		}
+	}
+ }
+ 
+ function toggleIcoMode() {
+	
+	$(".icoDisable").button({
+		disabled: icoMode
+	});
+                
+    if(icoMode) {
+        var titleLink = $("<a>").attr('href', 'http://computationalnonlinear.asmedigitalcollection.asme.org/article.aspx?articleid=2593224')
+                                .attr('target', '_blank')
+                                .html("Yan-Bin Jia and Feifei Wang. Analysis and computation of two body impact in three dimensions. " +
+                                      "ASME Journal of Computational and Nonlinear Dynamics, vol. 12, no. 4, 2017. ")
+                                .css('margin', '15px')
+                                .css('display', 'block');
+                    
+        var span = $("<span>").html("A complete description of the impact configuration can be found in the following reference: <br><br>")
+                              .css('margin', '15px')
+                              .css('display', 'block');
+        
+        var header = "<h4 id='shapeHeaderIcoInfo'>Collision Details</h4>"
+
+        var div = $("<div>").attr('id', 'header3');
+        div.append(span);
+        div.append(titleLink);
+        
+        $('#shapesAccordion').append(header);
+        $('#shapesAccordion').append(div);
+        $('#shapesAccordion').accordion("refresh");
+    }
  }
  
  function initSettings() {
@@ -1155,12 +1621,20 @@ function multicollide_update() {
 	showVelocityGraph = (localStorage.getItem('showVelocity') === 'true');
 	$("#showVelocity").prop('checked', showVelocityGraph);
 	checkIfShouldShowGraphs();
+	
+	//mu & e:
+	$("#friction").val(roundNumber(_getShapeFriction()));
+	$("#restitution").val(roundNumber(_getShapeRestitution()));
+ }
+ 
+ function roundNumber(num){
+	 return Math.round(num * 100) / 100
  }
  
  function initSettingsStorage() {
 	 localStorage.setItem('simMode', '3D');
 	 localStorage.setItem('freefly', true);
-	 localStorage.setItem('rotationDisplay', 'noRotationDisplay');
+	 localStorage.setItem('rotationDisplay', 'rotationAxis');
 	 localStorage.setItem('showImpulse', true);
 	 localStorage.setItem('showVelocity', true);
  }
