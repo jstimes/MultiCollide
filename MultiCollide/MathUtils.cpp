@@ -67,30 +67,49 @@ float MathUtils::convertTrigInputToStandardRange(float x) {
 	return x;
 }
 
-glm::mat4 MathUtils::rotationFromAtoB(glm::vec3 a, glm::vec3 b) {
+glm::mat4 MathUtils::rotationFromAtoB(glm::vec3 &a, glm::vec3 &b) {
 	a = glm::normalize(a);
 	b = glm::normalize(b);
 	glm::vec3 rotAxis = glm::cross(a, b);
 	float rotAngle = acos(glm::dot(b, a));
 
 	//In case b is parallel with a :
-	if (MathUtils::abs(a.x - b.x) < .0001f && MathUtils::abs(a.y - b.y) < .0001f && MathUtils::abs(a.z - b.z) < .0001f) {
+	glm::vec3 aMinusB = a - b;
+	glm::vec3 aPlusB = a + b;
+	if (isZeroVec(aMinusB)) {
+
+		//std::cout << "rotationFromAtoB - a == b" << std::endl;
 
 		//Same vector:
 		if (glm::dot(a, b) > 0.0f) {
 			return glm::mat4();
 		}
-		// Opposite vectors
-		else {
-
-			rotAngle = glm::pi<float>();
-		}
 	}
+
+	if (isZeroVec(aPlusB)) {
+		//Opposite vectors:
+		float c1 = a.x;
+		float c2 = a.y;
+		float c3 = a.z;
+
+		glm::vec3 v1(c2, -c1, 0.0f);
+		glm::vec3 v2(-c3, 0.0f, c1);
+
+		rotAxis = v1 + v2;
+		rotAngle = MathUtils::PI;
+	}
+
+	
 
 	return glm::rotate(glm::mat4(), rotAngle, rotAxis);
 }
 
-float MathUtils::magnitude(glm::vec3 a) {
+bool MathUtils::isZeroVec(glm::vec3 &vec) {
+	return (MathUtils::abs(vec.x) < .0001f && MathUtils::abs(vec.y) < .0001f
+		&& MathUtils::abs(vec.z) < .0001f);
+}
+
+float MathUtils::magnitude(glm::vec3 &a) {
 	return sqrtf(a.x * a.x + a.y * a.y + a.z * a.z);
 }
 
@@ -118,7 +137,7 @@ Eigen::Matrix3d MathUtils::glmToEigenMatrix(glm::mat3 &glmMat)
 	return eigenMat;
 }
 
-void MathUtils::printMat(glm::mat3 mat) {
+void MathUtils::printMat(glm::mat3 &mat) {
 	for (int j = 0; j < 3; j++) {
 		for (int i = 0; i < 3; i++) {
 			std::cout << mat[i][j] << " ";
@@ -127,7 +146,7 @@ void MathUtils::printMat(glm::mat3 mat) {
 	}
 }
 
-void MathUtils::printMat(glm::mat4 mat) {
+void MathUtils::printMat(glm::mat4 &mat) {
 	for (int j = 0; j < 3; j++) {
 		for (int i = 0; i < 3; i++) {
 			std::cout << mat[i][j] << " ";
@@ -142,8 +161,8 @@ bool MathUtils::checkOppositeSigns(float a, float b) {
 
 glm::vec2 MathUtils::solveQuadratic(float a, float b, float c) {
 	float squareRoot = sqrt(b*b - 4.0f * a * c);
-	float root1 = (-b + squareRoot) / 2.0f * a;
-	float root2 = (-b - squareRoot) / 2.0f * a;
+	float root1 = (-b + squareRoot) / (2.0f * a);
+	float root2 = (-b - squareRoot) / (2.0f * a);
 	return glm::vec2(root1, root2);
 }
 
@@ -151,4 +170,12 @@ glm::vec3 MathUtils::projectionOfAontoB(glm::vec3 &a, glm::vec3 &b) {
 	glm::vec3 bHat = glm::normalize(b);
 
 	return glm::dot(a, bHat) * b;
+}
+
+float MathUtils::clamp(float value, float min, float max) {
+	if (value < min)
+		return min;
+	if (value > max)
+		return max;
+	return value;
 }

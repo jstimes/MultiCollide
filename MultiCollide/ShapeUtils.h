@@ -7,16 +7,21 @@
 #include <GL/glew.h>
 
 #include <GLFW/glfw3.h>
+#include <sstream>
 
 #include "MathUtils.h"
 #include "Shader.h"
 
-//#include "Shape.h"
 
+class Shape;
 
 class ShapeUtils {
 
 public:
+
+	//static void BackwardsIntegrate(Shape &shape, float seconds = 2.5f);
+
+	static void AddVecToStringstream(glm::vec3 &vec, std::ostringstream &stream, std::string lastChar);
 
 	static void AddPoint(std::vector<GLfloat> &vector, glm::vec3 &pt, glm::vec3 &normal);
 
@@ -87,6 +92,18 @@ public:
 		glm::vec3 edgeVec = b - a;
 
 		return glm::vec3(edgeVec.y, -edgeVec.x, 0.0f);
+	}
+
+	//Reference: http://www.lighthouse3d.com/tutorials/view-frustum-culling/clip-space-approach-extracting-the-planes/
+	static bool checkIfInFrustrum(glm::mat4 &PV, glm::vec3 &pt) {
+		glm::vec4 pt4 = glm::vec4(pt.x, pt.y, pt.z, 1.0f);
+		glm::vec4 ptClip = PV * pt4;
+		glm::vec3 ptNormalized = glm::vec3(ptClip.x / ptClip.w, ptClip.y / ptClip.w, pt.z / ptClip.w);
+		
+		
+		return (ptNormalized.x > -1.0f && ptNormalized.x < 1.0f
+			&& ptNormalized.y > -1.0f && ptNormalized.y < 1.0f
+			&& ptNormalized.z > -1.0f && ptNormalized.z < 1.0f);
 	}
 
 };

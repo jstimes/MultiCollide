@@ -46,16 +46,24 @@ public:
 		this->mu = frictionCoeff;
 		this->e = restitutionCoeff;
 
-		contactNormal = glm::normalize(glm::vec2(r1.x, r1.y)); //TODO - this will only work for circles
+		contactNormal = glm::normalize(glm::vec2(r2.x, r2.y)); //TODO - this will only work for circles
 		contactTangent = glm::vec2(-contactNormal.y, contactNormal.x);
+
+		//Assert t x n = 1:
+		float cross = contactTangent.x * contactNormal.y - contactTangent.y * contactNormal.x;
+		if (MathUtils::abs(1.0f - cross) > .0001f) {
+			if (MathUtils::abs(-1.0f - cross) < .0001f) {
+				contactTangent *= -1.0f;
+			}
+		}
 
 		glm::vec2 r1Perp = glm::vec2(-r1.y, r1.x);
 		glm::vec2 r2Perp = glm::vec2(-r2.y, r2.x);
 		inverseInertia = ((m1 + m2) / (m1*m2)) * glm::mat2() + 
 			(1.0f / inertia1) * glm::outerProduct(r1Perp, r1Perp) + (1.0f / inertia2) * glm::outerProduct(r2Perp, r2Perp);
 
-		u1 = glm::vec2(v1 + w1*r1);
-		u2 = glm::vec2(v2 + w2*r2);
+		u1 = glm::vec2(v1) + w1*r1Perp;
+		u2 = glm::vec2(v2) + w2*r2Perp;
 		contactVelocity = u1 - u2;
 		vn = glm::dot(contactVelocity, contactNormal);
 		vt = glm::dot(contactVelocity, contactTangent);
@@ -92,16 +100,17 @@ public:
 		calculateSigma();
 		calculateDelta();
 
-		//TODO what if vt == 0.0f?
-
 		glm::vec2 Wsigma = inverseInertia * sigma;
 		float tWsigma = glm::dot(contactTangent, Wsigma);
 		nWsigma = glm::dot(contactNormal, Wsigma);
 		nWdelta = glm::dot(contactNormal, inverseInertia * delta);
 
 		Ins = 0.0f;
-		if (MathUtils::abs(vt) < 0.00001f) {
-			//Ins = 0.0f;
+		if (MathUtils::abs(vt) < 0.00001f || glm::distance(sigma, delta) < 0.0001f) {
+			Inc = (-1.0f * vn) / glm::dot(contactNormal, inverseInertia * delta);
+
+			Inr = Inc * (1.0f + e);
+			return;
 		}
 		else if (MathUtils::abs(tWsigma) > 0.00001f && MathUtils::checkOppositeSigns(vt, tWsigma)) {
 			Ins = (-1.0f * vt) / tWsigma;
@@ -119,7 +128,7 @@ public:
 
 		if (Ins <= IncTilde) {
 			//Case 1:
-			roots = case1();
+			roots = scr();
 		}
 		else {
 			//Case 2
@@ -143,26 +152,21 @@ public:
 
 private:
 
-	//scr
-	glm::vec2 case1() {
+	glm::vec2 scr() {
+
+		float a = -.5f * nWdelta;
 		float b = (-1.0f * (vn + glm::dot(contactNormal, inverseInertia * (sigma - delta)) * Ins));
 		Inc = b / nWdelta;
 		float c2 = (e*e - 1.0f) * phi2(Inc) + e*e*(phi1(Ins) - phi2(Ins)) - .5f * nWdelta * Ins * Ins;
-
-		//ax^2 + bx + c = 0
-		//x = (-b +- sqrt(b^2 - 4ac) ) / 2a
-
-		float a = -.5f * nWdelta;
 
 		return MathUtils::solveQuadratic(a, b, c2);
 	}
 
 	glm::vec2 case2() {
 		Inc = IncTilde;
-		float E2Ins = E2(Ins);
+		float E2Ins = E1(Ins);
 
-		if (E2Ins <= 0.0f) {
-			//Case 2a:
+		if (E2Ins < 0.0f) {
 			//cr
 			float a = -.5f * nWsigma;
 			float b = -vn;
@@ -171,9 +175,7 @@ private:
 			return MathUtils::solveQuadratic(a, b, c);
 		}
 		else {
-			//Case 2b:
 			//csr
-			//float Es = (e*e - 1.0f) * phi1(Inc) + phi1(Ins);
 			float a = -.5f * nWdelta;
 			float b = -1.0f * (vn + glm::dot(contactNormal, inverseInertia * (sigma - delta)) * Ins);
 			float c1 = (e*e - 1.0f) * phi1(Inc) + phi1(Ins) - phi2(Ins) - .5f * nWdelta * Ins * Ins;
@@ -182,7 +184,6 @@ private:
 		}
 	}
 
-	//Equation 19
 	void calculateSigma() {
 		sigma = glm::vec2(0.0f);
 		if (vt > 0.0f) {
@@ -193,7 +194,6 @@ private:
 		}
 	}
 
-	//Equation 21
 	void calculateDelta() {
 		float tWn = glm::dot(contactTangent, inverseInertia * contactNormal);
 		float abs_tWn = MathUtils::abs(tWn);
@@ -203,33 +203,30 @@ private:
 		delta = contactNormal;
 
 		if (abs_tWn <= mu_tWt) {
-			delta = delta - (tWn / tWt) * contactTangent;
+			delta = delta - ((tWn / tWt) * contactTangent);
 		}
 		else {
-			if (vt > 0.0f) {
-				delta += mu * contactTangent;
+			if (vt > 0.0001f) {
+				delta += (mu * contactTangent);
 			}
-			else if (vt < 0.0f) {
-				delta -= mu * contactTangent;
+			else if (vt < -0.0001f) {
+				delta -= (mu * contactTangent);
 			}
 			else {
-				delta -= mu * (tWn / abs_tWn) * contactTangent;
+				delta -= (mu * (tWn / abs_tWn) * contactTangent);
 			}
 		}
 	}
 
-	//Equation 25
 	float phi1(float In) {
 		return -vn * In - .5f * nWsigma * In * In;
 	}
 
-	//Equation 26
 	float phi2(float In) {
 		return -vn * In - nWsigma * Ins * In - .5f * nWdelta * (In - Ins) * (In - Ins);
 	}
 
-	//Equation 30
-	float E2(float In) {
+	float E1(float In) {
 		return -.5f * nWsigma * In * In - vn * In + (e*e - 1.0f) * phi1(Inc);
 	}
 };

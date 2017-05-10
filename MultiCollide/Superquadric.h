@@ -5,19 +5,13 @@
 #include <map>
 
 #include "Quaternion.h"
-#include "Shape.h"
+#include "ShapeSeparatingAxis.h"
 
 const float SQ_EPSILON = 0.001f;
 
 //float PI = glm::pi<float>();
 //float PI_OVER_2 = PI / 2.0f;
 //float PI_OVER_4 = PI_OVER_2 / 2.0f;
-
-struct ParamPoint {
-	float u;
-	float v;
-	glm::vec3 pt;
-};
 
 //class tuple2 {
 //public: 
@@ -98,27 +92,55 @@ struct ParamPoint {
 //};
 
 // Vertex generation adapted from: http://www.gamedev.net/page/resources/_/technical/opengl/superquadric-ellipsoids-and-toroids-opengl-lig-r1172
-class Superquadric : public Shape {
+class Superquadric : public ShapeSeparatingAxis {
 
 	static const bool print = false;
 
 public:
 
-	virtual bool DispatchCollisionDetection(Shape *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
-		std::cout << "SQ DD 1" << std::endl;
-		return other->DispatchCollisionDetection(this, closestPt1, closestPt2, pp1, pp2);
+	virtual glm::vec3 GetNormalAtPoint(ParamPoint &pt) override {
+		return this->NormalFromSurfaceParams(pt.u, pt.v);
 	}
 
-	virtual bool DispatchCollisionDetection(Superquadric *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
-		std::cout << "SQ DD 2" << std::endl;
-		return CollisionDetector::Detect(*this, *other, closestPt1, closestPt2, pp1, pp2);
-		//other.DispatchCollisionDetection(*this);
+	virtual bool DispatchCollisionDetection(Shape *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) override {
+		//std::cout << "SQ DD 1" << std::endl;
+		return other->DispatchCollisionDetection(this, closestPt2, closestPt1, pp2, pp1);
 	}
 
-	virtual bool DispatchCollisionDetection(ShapeSeparatingAxis *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
-		std::cout << "SQ DD 3" << std::endl;
+	virtual bool DispatchCollisionDetection(Superquadric *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) override {
+		//std::cout << "SQ DD 2" << std::endl;
 		return CollisionDetector::Detect(*this, *other, closestPt1, closestPt2, pp1, pp2);
-		//other.DispatchCollisionDetection(*this);
+	}
+
+	virtual bool DispatchCollisionDetection(ShapeSeparatingAxis *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) override {
+		//std::cout << "SQ DD 3" << std::endl;
+		return CollisionDetector::Detect(*this, *other, closestPt1, closestPt2, pp1, pp2);
+	}
+
+	//From "Segmentation and Recovery of Superquadrics"
+	virtual void ComputeInertia() override {
+		float Ixx, Iyy, Izz;
+
+		float betas = Beta(1.5f * e2, .5f * e2) * Beta(.5f * e1, 2.0f*e1 + 1.0f);
+
+		float pre = .5f * a1 * a2 * a3 * e1 * e2;
+		float end = 4.0f * a3*a3 *
+			Beta(.5f * e2, .5f * e2 + 1.0f) * Beta(1.5f * e1, e1 + 1.0f);
+
+		Ixx = pre * (a2 * a2 * betas + end);
+
+		Iyy = pre * (a1 * a1 * betas + end);
+
+		Izz = pre * (a1*a1 + a2*a2) * betas;
+
+		angularInertia = glm::mat3();
+		angularInertia[0][0] = Ixx;
+		angularInertia[1][1] = Iyy;
+		angularInertia[1][1] = Izz;
+	}
+
+	float Beta(float x, float y) {
+		return 1.0f;
 	}
 
 	float a1, a2, a3;       		 /* Scaling factors for x, y, and z */
@@ -134,6 +156,8 @@ public:
 	std::vector<ParamPoint> points;
 
 	std::map<float, std::map<float, glm::vec3>> pointsMap;
+
+	int csvCode;
 
 	std::vector<float> allTriangleAreas;
 
@@ -445,12 +469,12 @@ public:
 			sq.evalParams(curUV.x, curUV.y, localContactPt, i3);
 
 			glm::vec3 diffVec = origLocalContactPt - localContactPt;
-			if (abs(diffVec.x) > .1f || abs(diffVec.y) > .1f || abs(diffVec.z) > .1f) {
+			if (MathUtils::abs(diffVec.x) > .1f || MathUtils::abs(diffVec.y) > .1f || MathUtils::abs(diffVec.z) > .1f) {
 				curUV = curUV - (.5f * lastUpdate);
 				sq.evalParams(curUV.x, curUV.y, localContactPt, i3);
 
 				glm::vec3 diffVec = origLocalContactPt - localContactPt;
-				if (abs(diffVec.x) > .1f || abs(diffVec.y) > .1f || abs(diffVec.z) > .1f) {
+				if (MathUtils::abs(diffVec.x) > .1f || MathUtils::abs(diffVec.y) > .1f || MathUtils::abs(diffVec.z) > .1f) {
 					curUV = curUV - (.25f * lastUpdate);
 					sq.evalParams(curUV.x, curUV.y, localContactPt, i3);
 				}
@@ -928,6 +952,8 @@ public:
 		u = 0.0f;
 		v = 0.0f;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 
 		sq.pointsMap[u][v] = vec;
@@ -935,30 +961,40 @@ public:
 		u = 0.0f;
 		v = PI / 2.0f;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
 		u = 0.0f;
 		v = -PI;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
 		u = 0.0f;
 		v = -PI / 2.0f;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
 		u = -PI / 2.0f;
 		v = -PI / 2.0f;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
 		u = PI / 2.0f;
 		v = PI / 2.0f;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
@@ -967,42 +1003,58 @@ public:
 		u = PI / 4.0f;
 		v = u;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
 		v = -u;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
 		v = 3 * u;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
 		v = -3 * u;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
 		u = -PI / 4.0f;
 		v = u;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
 		v = -u;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
 		v = 3 * u;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
 		v = -3 * u;
 		sq.evalParams(u, v, vec, norm);
+		sq.corners.push_back(norm);
+		sq.normals.push_back(norm);
 		sq.points.push_back({ u, v, vec });
 		sq.pointsMap[u][v] = vec;
 
@@ -3591,11 +3643,13 @@ public:
 	}
 
 	float sqC(float x, float e) {
-		return MathUtils::sgnf(MathUtils::cos(x)) * powf(MathUtils::abs(MathUtils::cos(x)), e);
+		float cosx = MathUtils::cos(x);
+		return MathUtils::sgnf(cosx) * powf(MathUtils::abs(cosx), e);
 	}
 
 	float sqS(float x, float e) {
-		return MathUtils::sgnf(MathUtils::sin(x)) * powf(MathUtils::abs(MathUtils::sin(x)), e);
+		float sinx = MathUtils::sin(x);
+		return MathUtils::sgnf(sinx) * powf(MathUtils::abs(sinx), e);
 	}
 
 	float fx(float x, float y, float z) {
@@ -3717,6 +3771,25 @@ public:
 	bool isNonsingular(float u, float v) {
 		return checkVecForNaN(dSigmaDu(u, v)) || checkVecForNaN(dSigmaDv(u, v))
 			|| checkVecForNaN(ddSigmaDuDu(u, v)) || checkVecForNaN(ddSigmaDuDv(u, v)) || checkVecForNaN(ddSigmaDvDv(u, v));
+	}
+
+	virtual std::string getShapeCSVline1() override {
+
+		std::string codeStr = std::to_string(this->csvCode);
+		std::ostringstream os;
+		os << codeStr;
+
+		if (this->csvCode == 4) {
+			//Only need extra info for custom superquadrics:
+			os << "," << this->a1 << "," << this->a2 << "," << this->a3;
+			os << "," << this->e1 << "," << this->e2;
+		}
+		os << std::endl;
+		return os.str();
+	}
+
+	void setShapeCSVcode(int code) {
+		this->csvCode = code;
 	}
 };
 
@@ -4720,14 +4793,14 @@ public:
 	//			fives++;
 	//			break;
 	//		case 6:
-	//			/*
+	//			
 	//			(.2, .35)
 	//			(.2, .65)
 	//			(.5, .8)
 	//			(.5,.2)
 	//			(.8, .35)
 	//			(.8, .65)
-	//			*/
+	//			
 	//			sq.evalParams(u + oneFifthLength, v + point35Len, pt2, pt2N);
 	//			sq.evalParams(u + oneFifthLength, v + point65Len, pt3, pt3N);
 	//			sq.evalParams(u + halfSquareLength, v + fourFifths, pt4, pt4N);

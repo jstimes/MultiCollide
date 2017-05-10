@@ -13,9 +13,78 @@ public:
 	Shape2D() {
 		this->is2D = true;
 		this->rotationAxis = glm::vec3(0.0f, 0.0f, 1.0f);
-		this->angularVelocityAxis = glm::vec3(0.0f, 0.0f, 1.0f);
+		this->angularVelocityAxis = glm::vec3(0.0f, 0.0f, 0.0f);
 	}
 
+	virtual glm::vec3 GetNormalAtPoint(ParamPoint &pt) override {
+		//pt.pt is in global space
+
+		glm::mat4 myRot = getRotationMatrix();
+		glm::vec3 localPt = ShapeUtils::getLocalCoordinates(pt.pt, this->translation, myRot, this->scaling);
+
+		//compare all corner vertices to localPt, track the closest 2 corners
+		//Then find the normal of the edge between those two pts (should be adjacent)
+
+		glm::vec3 closest1(0.0f);
+		glm::vec3 closest2(0.0f);
+		float dist1, dist2;
+		dist1 = dist2 = 100000.0f;
+
+		for (int i = 0; i < corners.size(); i++) {
+			glm::vec3 corner = corners[i];
+			float dist = ShapeUtils::squaredDistance(localPt, corner);
+
+			if (dist < dist1) {
+				//Move 1st point to second slot
+				closest2 = closest1;
+				dist2 = dist1;
+
+				closest1 = corner;
+				dist1 = dist;
+			}
+			else if (dist < dist2) {
+				closest2 = corner;
+				dist2 = dist;
+			}
+		}
+
+		glm::vec3 line = closest1 - closest2;
+		glm::vec3 normal = glm::vec3(-line.y, line.x, 0.0f);
+
+		
+		//Might be facing wrong direction, check that it's not pointing to centroid
+		glm::vec3 zero(0.0f);
+		glm::vec3 ptPlusNorm = localPt + normal;
+		glm::vec3 ptSubNorm = localPt - normal;
+		if (ShapeUtils::squaredDistance(ptPlusNorm, zero) < ShapeUtils::squaredDistance(ptSubNorm, zero)) {
+			//If the pt plus the normal is closer to origin, normal is facing inward, so invert it:
+			normal *= -1.0f;
+		}
+
+		return normal;
+	}
+
+	//From http://mathoverflow.net/questions/73556/calculating-moment-of-inertia-in-2d-planar-polygon
+	virtual void ComputeInertia() override {
+		float numerator = 0.0f;
+		float denominator = 0.0f;
+
+		for (int i = 0; i < corners.size() - 1; i++) {
+			glm::vec3 pi = corners[i];
+			glm::vec3 piPlus1 = corners[i + 1];
+
+			float xi = pi.x;
+			float yi = pi.y;
+			float xj = piPlus1.x;
+			float yj = piPlus1.y;
+
+			float tail = (xi*yj - xj * yi);
+			numerator += (xi*xi + yi*yi + xi*xj + yi*yj + xj*xj + yj + yj)*tail;
+			denominator += tail;
+		}
+
+		this->angularInertia[0][0] = (this->mass / 6.0f) * (numerator / denominator);
+	}
 
 	virtual void InitVAOandVBO(Shader &shader) override {
 
@@ -51,88 +120,4 @@ public:
 		glDeleteBuffers(1, &VAO);
 	}
 
-	//static bool CollisionDetection(Shape2D &s1, Shape2D &s2) {
-	//	
-	//	glm::mat4 s1Rot = s1.getRotationMatrix();
-	//	glm::mat4 s2Rot = s2.getRotationMatrix();
-
-	//	for (int i = 0; i < s1.normals.size(); i++) {
-	//		
-	//		glm::vec3 normal = ShapeUtils::applyRotation(s1.normals[i], s1Rot);
-
-	//		float  min1, min2, max1, max2;
-	//		min1 = min2 = 10000.0f;
-	//		max1 = max2 = -min1;
-
-	//		for (int c = 0; c < s1.corners.size(); c++) {
-	//			glm::vec3 corner = ShapeUtils::getGlobalCoordinates(s1.corners[c], s1.translation, s1Rot);
-	//			float proj = glm::dot(corner, normal);
-
-	//			if (proj < min1) {
-	//				min1 = proj;
-	//			}
-	//			if (proj > max1) {
-	//				max1 = proj;
-	//			}
-	//		}
-
-	//		for (int c = 0; c < s2.corners.size(); c++) {
-	//			glm::vec3 corner = ShapeUtils::getGlobalCoordinates(s2.corners[c], s2.translation, s2Rot);
-	//			float proj = glm::dot(corner, normal);
-
-	//			if (proj < min2) {
-	//				min2 = proj;
-	//			}
-	//			if (proj > max2) {
-	//				max2 = proj;
-	//			}
-	//		}
-
-	//		if (min1 > max2 || min2 > max2) {
-	//			//std::cout << "Separating axis - no collision" << std::endl;
-	//			return false;
-	//		}
-	//	}
-
-	//	for (int i = 0; i < s2.normals.size(); i++) {
-
-	//		glm::vec3 normal = ShapeUtils::applyRotation(s2.normals[i], s2Rot);
-
-	//		float  min1, min2, max1, max2;
-	//		min1 = min2 = 10000.0f;
-	//		max1 = max2 = -min1;
-
-	//		for (int c = 0; c < s1.corners.size(); c++) {
-	//			glm::vec3 corner = ShapeUtils::getGlobalCoordinates(s1.corners[c], s1.translation, s1Rot);
-	//			float proj = glm::dot(corner, normal);
-
-	//			if (proj < min1) {
-	//				min1 = proj;
-	//			}
-	//			if (proj > max1) {
-	//				max1 = proj;
-	//			}
-	//		}
-
-	//		for (int c = 0; c < s2.corners.size(); c++) {
-	//			glm::vec3 corner = ShapeUtils::getGlobalCoordinates(s2.corners[c], s2.translation, s2Rot);
-	//			float proj = glm::dot(corner, normal);
-
-	//			if (proj < min2) {
-	//				min2 = proj;
-	//			}
-	//			if (proj > max2) {
-	//				max2 = proj;
-	//			}
-	//		}
-
-	//		if (min1 > max2 || min2 > max2) {
-	//			//std::cout << "Separating axis - no collision" << std::endl;
-	//			return false;
-	//		}
-	//	}
-
-	//	//std::cout << "Tried all axes, no separating axis, -> COllision" << std::endl;
-	//	return true;
-	//}
 };

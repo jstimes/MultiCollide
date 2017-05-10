@@ -8,7 +8,6 @@
 #include <Eigen/Dense>
 #include "MathUtils.h"
 
-const int NumIter = 2000;
 const double constantStep = 0.005;
 //const bool DEBUG = false;
 
@@ -108,6 +107,8 @@ public:
 	{
 		using namespace std;
 
+		int NumIter = 2000;
+
 		double initialVperpu, initialVperpw, initialVnormaln;
 		Matrix3d Rot, S, A, Identity3;
 		Vector3d initialVperp, initialVnormal;
@@ -137,7 +138,29 @@ public:
 
 		//start initialization part for the numerical integration using the Euler's method.
 		double StepsizeIn = constantStep;
-		double vvu[NumIter], vvw[NumIter], vvn[NumIter], IIu[NumIter], IIw[NumIter], IIn[NumIter], EE[NumIter], curvatureOfV[NumIter];
+
+		std::vector<double> vvu;
+		std::vector<double> vvn;
+		std::vector<double> vvw;
+		std::vector<double> IIu;
+		std::vector<double> IIw;
+		std::vector<double> IIn;
+		std::vector<double> EE;
+		std::vector<double> curvatureOfV;
+		std::vector<double> nuPrimeNorm;
+		std::vector<double> stepSizeInCount;
+
+		vvu.resize(NumIter);
+		vvn.resize(NumIter);
+		vvw.resize(NumIter);
+		IIu.resize(NumIter);
+		IIw.resize(NumIter);
+		IIn.resize(NumIter);
+		EE.resize(NumIter);
+		curvatureOfV.resize(NumIter);
+		nuPrimeNorm.resize(NumIter);
+		stepSizeInCount.resize(NumIter);
+
 		for (int i = 0; i<NumIter; i++)
 		{
 			vvu[i] = 0;
@@ -259,6 +282,23 @@ public:
 			{
 				tempVVN = vvn[count];
 				count++;
+
+				if (count >= NumIter) {
+					NumIter *= 2;
+					vvu.resize(NumIter);
+					vvn.resize(NumIter);
+					vvw.resize(NumIter);
+					IIu.resize(NumIter);
+					IIw.resize(NumIter);
+					IIn.resize(NumIter);
+					EE.resize(NumIter);
+					curvatureOfV.resize(NumIter);
+					nuPrimeNorm.resize(NumIter);
+					stepSizeInCount.resize(NumIter);
+
+					std::cout << "Had to double array size in Impact" << std::endl;
+				}
+
 				IIn[count] = IIn[count - 1] + StepsizeIn;
 
 				//below is the method for updating these things
@@ -285,6 +325,24 @@ public:
 			else if (sliding == 0)//update all the part in the sticking situation
 			{
 				count++;
+
+				if (count >= NumIter) {
+					NumIter *= 2;
+					vvu.resize(NumIter);
+					vvn.resize(NumIter);
+					vvw.resize(NumIter);
+					IIu.resize(NumIter);
+					IIw.resize(NumIter);
+					IIn.resize(NumIter);
+					EE.resize(NumIter);
+					curvatureOfV.resize(NumIter);
+					nuPrimeNorm.resize(NumIter);
+					stepSizeInCount.resize(NumIter);
+
+					std::cout << "Had to double array size in Impact" << std::endl;
+				}
+
+
 				IIn[count] = IIn[count - 1] + StepsizeIn;
 				IIu[count] = IIu[count - 1] + StepsizeIn*((-1.0)*BNew.inverse()*c)(0);
 				IIw[count] = IIw[count - 1] + StepsizeIn*((-1.0)*BNew.inverse()*c)(1);

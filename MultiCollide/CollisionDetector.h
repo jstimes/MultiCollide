@@ -36,9 +36,11 @@ public:
 	//Returns true if collision detected
 	static bool Detect(ShapeSeparatingAxis &s1, ShapeSeparatingAxis &s2, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2);
 
+	static void SlideS2onS1(ShapeSeparatingAxis &s1, ShapeSeparatingAxis &s2, glm::vec3 &closestS1, glm::vec3 &closestS2, glm::vec3 &s2Trans);
+
 private:
 
 	//TODO could cache global coords of corners in a vector
-	static bool checkForSeparatingAxisAlongNormal(ShapeSeparatingAxis &s1, ShapeSeparatingAxis &s2, glm::vec3 &normal, glm::mat4 &s1Rot, glm::mat4 &s2Rot);
+	static bool checkForSeparatingAxisAlongNormal(ShapeSeparatingAxis &s1, ShapeSeparatingAxis &s2, glm::vec3 &normal, glm::mat4 &s1Rot, glm::mat4 &s2Rot, float &minOverlap);
 	 
 };

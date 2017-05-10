@@ -13,7 +13,7 @@ public:
 
 	glm::mat4 view;
 
-	glm::vec3 initialCameraPos = glm::vec3(0.0f, 0.0f, 6.0f);
+	glm::vec3 initialCameraPos = glm::vec3(0.0f, 0.0f, 8.0f);
 	glm::vec3 cameraPos = initialCameraPos;
 	glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -148,5 +148,5 @@ public:
 
 	void calcView() {
 		view = glm::lookAt(cameraPos, cameraTarget, up);
-	}
+	} 
 };

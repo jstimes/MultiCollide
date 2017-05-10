@@ -168,8 +168,7 @@ public:
 		scaling *= initialScale;
 		boundingSphereRadius = initialScale * (sqrtf(e*e + 1.0f)) + BoundingSphereBuffer;
 
-		angularInertia = glm::mat3();
-		angularInertia[0][0] = angularInertia[1][0] = angularInertia[1][1] = angularInertia[2][0] = angularInertia[2][1] = angularInertia[2][2] = .0671673f;
+		ComputeInertia();
 	}
 
 	void addPentagon(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, glm::vec3 e) {
@@ -196,6 +195,12 @@ public:
 		ShapeUtils::addTriangleToVectorWithColor(d, e, f, n, hexagonColor, vertices);
 
 		normals.push_back(n);
+	}
+
+	virtual void ComputeInertia() override {
+		angularInertia = glm::mat3();
+		//angularInertia[0][0] = angularInertia[1][0] = angularInertia[1][1] = angularInertia[2][0] = angularInertia[2][1] = angularInertia[2][2] = .0671673f;
+		angularInertia[0][0] = angularInertia[1][1] = angularInertia[2][2] = .0671673f;
 	}
 
 	virtual void InitVAOandVBO(Shader &shader) override {
@@ -239,6 +244,12 @@ public:
 		glDeleteBuffers(1, &VAO);
 	}
 
+	virtual std::string getShapeCSVline1() override {
+		std::ostringstream os;
+		os << "10" << std::endl;
+		return os.str();
+	}
+
 };
 
 class Tetra : public ShapeSeparatingAxis {
@@ -266,7 +277,7 @@ public:
 		corners.push_back(d);
 
 		glm::vec3 n1 = ShapeUtils::getNormalOfTriangle(a, c, b);
-		glm::vec3 n2 = ShapeUtils::getNormalOfTriangle(a, c, b);
+		glm::vec3 n2 = ShapeUtils::getNormalOfTriangle(a, b, d);
 		glm::vec3 n3 = ShapeUtils::getNormalOfTriangle(a, d, c);
 		glm::vec3 n4 = ShapeUtils::getNormalOfTriangle(b, c, d);
 
@@ -288,6 +299,10 @@ public:
 		this->applyRotation(glm::vec3(1.0f, 0.0f, 0.0f), glm::pi<float>() / 2.0f);
 		this->applyRotation(glm::vec3(0.0f, 0.0f, 1.0f), -glm::pi<float>() / 8.0f);
 
+		ComputeInertia();
+	}
+
+	virtual void ComputeInertia() override {
 		angularInertia = glm::mat3();
 		angularInertia[0][0] = .027135f;
 		angularInertia[1][1] = .017239f;
@@ -328,4 +343,9 @@ public:
 		glDeleteBuffers(1, &VAO);
 	}
 
+	virtual std::string getShapeCSVline1() override {
+		std::ostringstream os;
+		os << "11" << std::endl;
+		return os.str();
+	}
 };

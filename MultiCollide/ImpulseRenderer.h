@@ -27,7 +27,7 @@ public:
 
 	ImpulseRenderer() {
 		/*impulseShader = Shader::ShaderFromCode("#version 100 \n attribute vec3 position;\n uniform mat4 model;\n uniform mat4 sceneTransform;\n uniform mat4 view;\n uniform mat4 projection;\n varying vec3 FragPos;\n void main()\n {\n FragPos = vec3(model * vec4(position, 1.0));\n  gl_Position = sceneTransform * projection * view * model * vec4(position, 1.0);\n }\n",
-		"#version 100\n precision mediump float;\n varying vec3 FragPos;\n uniform vec3 color;\n void main()\n {\n  gl_FragColor = vec4(color, 1.0);\n }\n");
+			"#version 100\n precision mediump float;\n varying vec3 FragPos;\n uniform vec3 color;\n void main()\n {\n  gl_FragColor = vec4(color, 1.0);\n }\n");
 
 		impulseShader.Use();
 		icolorLoc = glGetUniformLocation(impulseShader.Program, "color");

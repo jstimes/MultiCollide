@@ -25,4 +25,10 @@ public:
 		boundingSphereRadius = sqrtf(.8083f*.8083f) + BoundingSphereBuffer;
 	}
 
+	virtual std::string getShapeCSVline1() override {
+		std::ostringstream os;
+		os << "7" << std::endl;
+		return os.str();
+	}
+
 };

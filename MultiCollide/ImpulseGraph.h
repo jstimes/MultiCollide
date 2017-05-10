@@ -59,6 +59,11 @@ public:
 			std::cout << "ERROR - impact occured but no impulse points" << std::endl;
 			return;
 		}
+		
+#ifndef  EMSCRIPTEN_KEEPALIVE //TODO for some reason this still executes in Emscripten
+		//this->initImpulseViews();
+		//std::cout << "initting impulse views" << std::endl;
+#endif
 
 		numDataPts = output.impulsePts.size();
 		endOfCompressionIndex = output.endOfCompression;

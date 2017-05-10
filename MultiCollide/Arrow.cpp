@@ -17,7 +17,9 @@ void Arrow::Draw(Shader &shader, float arrowLength, float headScaling, glm::vec3
 	}
 
 	glm::mat4 lineScaling = glm::scale(MathUtils::I4, glm::vec3(arrowLength, 0.0f, 0.0f));
-	glm::mat4 transAndRotMat = glm::translate(MathUtils::I4, translation) * MathUtils::rotationFromAtoB(glm::vec3(1.0f, 0.0f, 0.0f), ptToRotateArrowTo);
+	glm::vec3 xAxis(1.0f, 0.0f, 0.0f);
+	glm::mat4 rot = MathUtils::rotationFromAtoB(xAxis, ptToRotateArrowTo);
+	glm::mat4 transAndRotMat = glm::translate(MathUtils::I4, translation) * rot;
 	glm::mat4 lineModel = transAndRotMat * lineScaling;
 
 	glm::mat4 headModel = transAndRotMat * glm::translate(MathUtils::I4, glm::vec3(arrowLength, 0.0f, 0.0f)) * glm::scale(MathUtils::I4, glm::vec3(headScaling * defaultArrowHeadScaling));

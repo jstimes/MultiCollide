@@ -1,5 +1,21 @@
 #include "ShapeUtils.h"
+#include "Shape.h"
 
+
+//void ShapeUtils::BackwardsIntegrate(Shape &shape, float seconds) {
+//	float deltaT = .05f;
+//
+//	int iterations = ((float) seconds) / deltaT;
+//
+//	for (int i = 0; i < iterations; i++) {
+//		shape.applyRotation(shape.angularVelocityAxis, shape.angularVelocity * deltaT);
+//		shape.translation += -shape.curVelocity * deltaT;
+//	}
+//}
+
+void ShapeUtils::AddVecToStringstream(glm::vec3 &vec, std::ostringstream &stream, std::string lastChar) {
+	stream << vec.x << "," << vec.y << "," << vec.z << lastChar;
+}
 
 void ShapeUtils::AddPoint(std::vector<GLfloat> &vector, glm::vec3 &pt, glm::vec3 &normal) {
 	vector.push_back(pt.x);
@@ -27,7 +43,8 @@ glm::vec3 ShapeUtils::getNormalOfTriangle(glm::vec3 &p1, glm::vec3 &p2, glm::vec
 	normal.x = (V.y * W.z) - (V.z * W.y);
 	normal.y = (V.z * W.z) - (V.x * W.z);
 	normal.z = (V.x * W.y) - (V.y * W.x);
-	return normal;
+	glm::vec3 normalizedNormal = glm::normalize(normal);
+	return normalizedNormal;
 }
 
 //TODO max sure glm::length is same as Euclidean norm

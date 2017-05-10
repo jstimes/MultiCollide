@@ -85,7 +85,7 @@ namespace MultiCollide {
 
 		float Norm() {
 			//return sqrt(this->q0 * this->q0 + glm::dot(this->axis, this->axis));
-			return (float) this->quaternion.length();
+			return this->quaternion.length();
 		}
 
 		void Normalize() {

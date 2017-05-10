@@ -4,18 +4,18 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 // GLEW
 #define GLEW_STATIC
 #include <GL/glew.h>
 
 #include "Shader.h"
-#include "Text.h"
-
-//bool debug = false;
+//#include "Text.h"
 
 class GLView {
 
+	bool debug = false;
 protected:
 
 	float mHeight;
@@ -36,19 +36,21 @@ protected:
 
 	//TODO margin & padding, styling
 
-	const GLchar* vertexShaderSource = "#version 330 core\n"
-		"layout (location = 0) in vec3 position;\n"
+	const GLchar* vertexShaderSource = "#version 100\n"
+		"attribute vec3 position;\n"
 		"void main()\n"
 		"{\n"
 		"gl_Position = vec4(position.x, position.y, position.z, 1.0);\n"
 		"}\0";
 
-	const GLchar* fragmentShaderSource = "#version 330 core\n"
-		"out vec4 color;\n"
+	//"varying vec4 color;\n"
+	//"color = objectColor;\n"
+	const GLchar* fragmentShaderSource = "#version 100\n"
+		"precision mediump float;\n"
 		"uniform vec4 objectColor;\n"
 		"void main()\n"
 		"{\n"
-		"color = objectColor;\n"
+		"gl_FragColor = objectColor;\n"
 		"}\n\0";
 
 	Shader mShader = Shader::ShaderFromCode(this->vertexShaderSource, this->fragmentShaderSource);
@@ -70,8 +72,8 @@ public:
 
 		this->mColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-		//if(debug)
-		//	std::cout << "View created" << std::endl;
+		if(debug)
+			std::cout << "View created" << std::endl;
 	}
 
 	std::string GetText() {
@@ -182,7 +184,7 @@ public:
 		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW);
 
 		// Position attribute
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+		glVertexAttribPointer(this->mShader.getAttribute("position"), 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
 		glEnableVertexAttribArray(0);
 	}
 
@@ -195,7 +197,7 @@ public:
 
 			//std::cout << "Pos: " << x << ", " << y << std::endl;
 			
-			Text::Render(this->mText, x, y, .35f, this->mTextColor, this->mTextBackground);
+			//Text::Render(this->mText, x, y, .35f, this->mTextColor, this->mTextBackground);
 		}
 
 		this->mShader.Use();
@@ -217,7 +219,7 @@ public:
 
 		DeleteBuffers();
 
-		//if(debug)
-		//	std::cout << "View destroyed" << std::endl;
+		if(debug)
+			std::cout << "View destroyed" << std::endl;
 	}
 };

@@ -5,12 +5,18 @@ const std::complex<double> ImpactClosedForm::pi = 3.1415926536;
 const std::complex<double> ImpactClosedForm::i = std::complex<double>(0.0, 1.0);
 const double ImpactClosedForm::DEFAULT_ACCURACY = .000001;
 
-const int ImpactClosedForm::NumIter = 10000; //maximum number of iterations
+//int ImpactClosedForm::NumIter = 10000; //maximum number of iterations
 const double ImpactClosedForm::constantStep = 0.0001; //numerical intergration step size
 const double ImpactClosedForm::constSlidingisZero = 8.0*0.001; //the judging criteria for sliding velocity equals zero
 const double ImpactClosedForm::constStraightSlidingisZero = 8.0*0.001;
 
+
 ImpactClosedFormOutput ImpactClosedForm::impact() {
+
+	using namespace std;
+
+	int NumIter = 10000;
+
 	double initialVperpu, initialVperpw, initialVnormaln;
 	Eigen::Matrix3d Rot, S, A, Identity3;
 	Eigen::Vector3d initialVperp, initialVnormal;
@@ -57,8 +63,30 @@ ImpactClosedFormOutput ImpactClosedForm::impact() {
 
 	//start initialization part for the numerical integration using the Euler's method.
 	double StepsizeIn = constantStep;
-	double vvu[NumIter], vvw[NumIter], vvn[NumIter], IIu[NumIter], IIw[NumIter], IIn[NumIter], EE[NumIter], curvatureOfV[NumIter],
-		nuPrimeNorm[NumIter], stepSizeInCount[NumIter];
+
+
+	std::vector<double> vvu;
+	std::vector<double> vvn;
+	std::vector<double> vvw;
+	std::vector<double> IIu;
+	std::vector<double> IIw;
+	std::vector<double> IIn;
+	std::vector<double> EE;
+	std::vector<double> curvatureOfV;
+	std::vector<double> nuPrimeNorm;
+	std::vector<double> stepSizeInCount;
+
+	vvu.resize(NumIter);
+	vvn.resize(NumIter);
+	vvw.resize(NumIter);
+	IIu.resize(NumIter);
+	IIw.resize(NumIter);
+	IIn.resize(NumIter);
+	EE.resize(NumIter);
+	curvatureOfV.resize(NumIter);
+	nuPrimeNorm.resize(NumIter);
+	stepSizeInCount.resize(NumIter);
+
 	double lambdaStep = 0.5; double h1 = 0.01; double h2 = 0.01;
 	double top = 0.0; double bottom = 1.0; double valueofYPrime = 0.0; double x = 0.0; double y = 0.0;
 	for (int i = 0; i<NumIter; i++)
@@ -214,6 +242,23 @@ ImpactClosedFormOutput ImpactClosedForm::impact() {
 		}
 		tempVVN = vvn[count];
 		count++;
+
+		if (count >= NumIter) {
+			NumIter *= 2;
+			vvu.resize(NumIter);
+			vvn.resize(NumIter);
+			vvw.resize(NumIter);
+			IIu.resize(NumIter);
+			IIw.resize(NumIter);
+			IIn.resize(NumIter);
+			EE.resize(NumIter);
+			curvatureOfV.resize(NumIter);
+			nuPrimeNorm.resize(NumIter);
+			stepSizeInCount.resize(NumIter);
+
+			std::cout << "Had to double array size in Closed Form Impact" << std::endl;
+		}
+
 		IIn[count] = IIn[count - 1] + StepsizeIn;
 		//below is the method for updating these things
 		Eigen::Vector2d temp5, temp6;
@@ -236,9 +281,9 @@ ImpactClosedFormOutput ImpactClosedForm::impact() {
 		EE[count] = EE[count - 1] + StepsizeIn*(-vvn[count]);
 	}
 
-	for (int i = 0; i < count; i++) {
+	/*for (int i = 0; i < count; i++) {
 		std::cout << IIn[i] << ", " << IIu[i] << ", " << IIw[i] << std::endl;
-	}
+	}*/
 
 	if (situation == 2)
 	{
@@ -554,6 +599,7 @@ ImpactClosedFormOutput ImpactClosedForm::impact() {
 
 	ImpactClosedFormOutput output = { MathUtils::eigenToGlmVector(v1end), MathUtils::eigenToGlmVector(v2end),
 		MathUtils::eigenToGlmVector(w1end), MathUtils::eigenToGlmVector(w2end), MathUtils::eigenToGlmVector(Iend) };
+
 
 	return output;
 

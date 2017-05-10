@@ -27,7 +27,7 @@ private:
 	void InitConeVertices() {
 		int numSegments = 36;
 
-		float radius = .45f;
+		float radius = .3f;
 		float height = 1.0f;
 
 		float offset = (MathUtils::twoPI) / numSegments;

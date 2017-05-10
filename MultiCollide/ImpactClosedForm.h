@@ -27,7 +27,7 @@ class ImpactClosedForm
 	static const std::complex<double> i;// (0.0, 1.0);
 	static const double DEFAULT_ACCURACY;// = .000001;
 
-	static const int NumIter;// = 10000; //maximum number of iterations
+	//static int NumIter;// = 10000; //maximum number of iterations
 	static const double constantStep; // = 0.0001; //numerical intergration step size
 	static const double constSlidingisZero;// = 8.0*0.001; //the judging criteria for sliding velocity equals zero
 	static const double constStraightSlidingisZero;// = 8.0*0.001;
@@ -123,6 +123,8 @@ public:
 
 	int CubicRoots(std::complex<double> coefficients[], std::complex<double> roots[])
 	{
+		using namespace std;
+
 		if (coefficients[3] == 0.0) {
 			//throw std::invalid_argument("Not cubic function");
 			return QuadraticRoots(coefficients, roots);
@@ -199,6 +201,9 @@ public:
 
 	int QuarticRoots(std::complex<double> coefficients[], std::complex<double> roots[])
 	{
+
+		using namespace std;
+
 		if (coefficients[4] == 0.0) {
 			//throw std::invalid_argument("Not quartic function");
 			return CubicRoots(coefficients, roots);
@@ -242,6 +247,8 @@ public:
 
 	Eigen::Vector2d centrifugal(double mu, double c1, double c2, double B11, double B12, double B21, double B22)//find out centrifugal
 	{
+		using namespace std;
+
 		// q(x) = a0 + a1 *x +a2 *x^2 + a3*x^3 + a4*x^4
 		std::complex<double> q4[] = { c2 + B21, -2 * (c1 + B11 - B22), -2 * (B21 + 2 * B12), 2 * (B11 - B22 - c1), B21 - c2 };
 		std::complex<double> rootsQ4[4];

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <sstream>
 #include <vector>
 
 #include "ShapeUtils.h" // includes MathUtils, GL calls, and functions for shapes
@@ -10,7 +11,12 @@
 class CollisionDetector;
 class Superquadric;
 class ShapeSeparatingAxis;
-struct ParamPoint;
+
+struct ParamPoint {
+	float u;
+	float v;
+	glm::vec3 pt;
+};
 
 
 //An abstract class that defines common properties and behaviors among all
@@ -31,7 +37,9 @@ public:
 	//The initial position. Should only equal translation at time=0
 	glm::vec3 centroid;  
 
+	//2D shapes just use the [0][0] entry
 	glm::mat3 angularInertia;
+	virtual void ComputeInertia() = 0;
 
 	glm::vec3 translation;
 
@@ -65,9 +73,9 @@ public:
 		this->rotationAxis = glm::axis(curQuat);
 	}
 
-	glm::vec3 angularVelocityAxis = glm::vec3(1.0f, 0.0f, 0.0f);   //TODO quaternions
+	glm::vec3 angularVelocityAxis = glm::vec3(0.0f, 0.0f, 0.0f); 
 
-	float angularVelocity = 0.0f;
+	//float angularVelocity = 0.0f;
 
 	glm::vec3 curVelocity;
 
@@ -78,9 +86,9 @@ public:
 
 	float mass = 1.0f;
 
-	float frictionCoefficient = .25f;    // mu
+	//float frictionCoefficient = .25f;    // mu
 
-	float restitutionCoefficient = 1.0f; // e
+	//float restitutionCoefficient = 1.0f; // e
 
 	
 	//Collision Detection:
@@ -112,8 +120,26 @@ public:
 
 	std::string name;
 
+	void BackwardsIntegrate(float seconds = 2.5f) {
+		float deltaT = .05f;
+
+		int iterations = ((float)seconds) / deltaT;
+
+		for (int i = 0; i < iterations; i++) {
+			if (!MathUtils::isZeroVec(this->angularVelocityAxis)) {
+				float speed = MathUtils::magnitude(this->angularVelocityAxis);
+				glm::vec3 axis = glm::normalize(this->angularVelocityAxis);
+				this->applyRotation(axis, -speed * deltaT);
+			}
+			this->translation += -this->curVelocity * deltaT;
+		}
+	}
+
 
 	//Abstract functionality:
+
+	//Should return normal in local space
+	virtual glm::vec3 GetNormalAtPoint(ParamPoint &pt) = 0;
 
 	//Generate buffers and configure shader in-attributes (position, normal)
 	virtual void InitVAOandVBO(Shader &shader) = 0;
@@ -122,7 +148,7 @@ public:
 	virtual void Draw(Shader &shader) = 0;
 
 	//Destructor is responsible for deallocating the VAO and VBO
-	virtual ~Shape() = 0 { }
+	virtual ~Shape() { }
 
 
 
@@ -131,7 +157,7 @@ public:
 	}
 
 	virtual void DrawInitialAngularVelocity(Shader &shader) {
-		Arrow::Draw(shader, 1.3f * boundingSphereRadius, 2.0f, angularVelocityAxis, translation);
+		Arrow::Draw(shader, glm::length(angularVelocityAxis), 2.0f, angularVelocityAxis, translation);
 	}
 
 	virtual void DrawRotationAxis(Shader &shader) {
@@ -143,20 +169,59 @@ public:
 		}
 	}
 
+	//These methods are required so that the correct collision detection method
+	// can be called without explicitly checking the types of objects and casting them
 	virtual bool DispatchCollisionDetection(Shape *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
-		std::cout << "DD 1" << std::endl;
-		return other->DispatchCollisionDetection(this, closestPt1, closestPt2, pp1, pp2);
+		//std::cout << "DD 1" << std::endl;
+		return other->DispatchCollisionDetection(this, closestPt2, closestPt1, pp2, pp1);
 	}
 
 	virtual bool DispatchCollisionDetection(Superquadric *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
-		std::cout << "DD 2" << std::endl;
+		//std::cout << "DD 2" << std::endl;
 		return CollisionDetector::Detect(*this, *other, closestPt1, closestPt2, pp1, pp2);
-		//other.DispatchCollisionDetection(*this);
 	}
 
 	virtual bool DispatchCollisionDetection(ShapeSeparatingAxis *other, glm::vec3 &closestPt1, glm::vec3 &closestPt2, ParamPoint &pp1, ParamPoint &pp2) {
-		std::cout << "DD 3" << std::endl;
+		//std::cout << "DD 3" << std::endl;
 		return CollisionDetector::Detect(*this, *other, closestPt1, closestPt2, pp1, pp2);
-		//other.DispatchCollisionDetection(*this);
 	}
+
+	/*
+	0 - sphere
+	1 - cube 
+	2 - ellipsoid
+	3 - superquadric
+	4 - custom superquad, a1, a2, a3, e1, e2
+	5 - mesh - all data?
+	6 - circle  
+	7 - triangle
+	8 - square
+	9 - custom poly - all vertices, x1, y1, x2, y2,...
+	10 - icosahedron
+	11 - tetrahedron
+	*/
+	virtual std::string getShapeCSVline1() = 0;
+
+	virtual std::string getShapeCSVline2() {
+		std::ostringstream os;
+		ShapeUtils::AddVecToStringstream(this->translation, os, ",");
+
+		ShapeUtils::AddVecToStringstream(this->curVelocity, os, ",");
+
+		ShapeUtils::AddVecToStringstream(this->rotationAxis, os, ",");
+
+		os << rotationAngle << ",";
+
+		ShapeUtils::AddVecToStringstream(this->angularVelocityAxis, os, ",");
+
+		os << scaling << ",";
+
+		os << mass << "\n";
+
+		return os.str();
+	}
+
+	/*virtual Shape* duplicate() {
+
+	}*/
 };

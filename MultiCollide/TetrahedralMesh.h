@@ -69,7 +69,7 @@ public:
 
 		shader.Use();
 
-		ComputeMeshAttributes();
+		ComputeInertia();
 		getVerticesFromTetrahedra();
 
 		glGenVertexArrays(1, &VAO);
@@ -112,6 +112,10 @@ public:
 		boundingBox[0] = boundingBox[2] = boundingBox[4] = 1000000.0f;
 		boundingBox[1] = boundingBox[3] = boundingBox[5] = -boundingBox[0];
 
+		/*if (TetrahedraCount == 0) {
+			std::cout << "0 tetrahedra" << std::endl;
+		}*/
+		std::cout << "Tetrahedra count: " << TetrahedraCount << std::endl;
 		for (int i = 0; i < TetrahedraCount; i++) {
 			Tetrahedron t = this->Tetrahedra[i];
 
@@ -122,6 +126,22 @@ public:
 			glm::vec3 n2 = ShapeUtils::getNormalOfTriangle(t.a, t.b, t.d);
 			glm::vec3 n3 = ShapeUtils::getNormalOfTriangle(t.d, t.b, t.c);
 			glm::vec3 n4 = ShapeUtils::getNormalOfTriangle(t.a, t.d, t.c);
+
+			if (glm::dot(n1, t.a) < 0.0f) {
+				n1 *= -1.0f;
+			}
+
+			if (glm::dot(n2, t.a) < 0.0f) {
+				n2 *= -1.0f;
+			}
+
+			if (glm::dot(n3, t.b) < 0.0f) {
+				n3 *= -1.0f;
+			}
+
+			if (glm::dot(n4, t.a) < 0.0f) {
+				n4 *= -1.0f;
+			}
 
 			ShapeUtils::addTriangleToVector(t.a, t.b, t.c, n1, this->vertices);
 			ShapeUtils::addTriangleToVector(t.a, t.b, t.d, n2, this->vertices);
@@ -216,7 +236,7 @@ public:
 	// total mass and volume
 	//Finally, the mesh's angular inertia is computed by summing
 	// the angular inertia of each tetrahedra, taken w.r.t. the mesh centroid
-	void ComputeMeshAttributes() {
+	virtual void ComputeInertia() override {
 		typedef std::vector<Tetrahedron>::iterator iter;
 
 		this->ComputeCentroid();
@@ -272,6 +292,7 @@ public:
 		this->name = name;
 
 		std::string file(fileContents);
+		std::cout << file << std::endl;
 
 		//Need pointer for initFromStream polymorphism to work
 		std::istringstream *stringStream = new std::istringstream(file);
@@ -289,21 +310,24 @@ public:
 		std::string line;
 
 		while (std::getline(*stream, line)) {
-
+			std::cout << line << std::endl;
 			if (!mass) {
-				if (line.compare("Mass") == 0) {
+				if (line.find("Mass") != std::string::npos) {
 					mass = true;
+					std::cout << "Found mass" << std::endl;
 					std::getline(*stream, line);
 					this->Mass = stof(line);
 				}
 			}
 			else if (!vertex) {
-				if (line.compare("Vertices") == 0) {
+				if (line.find("Vertices") != std::string::npos) {
 					vertex = true;
+					std::cout << "Found Vertices" << std::endl;
 				}
 			}
 			else if (vertex && !tetrahedra) {
-				if (line.compare("Tetrahedra") == 0) {
+				if (line.find("Tetrahedra") != std::string::npos) {
+					std::cout << "Found Tetrahedra" << std::endl;
 					tetrahedra = true;
 					continue;
 				}
@@ -313,8 +337,10 @@ public:
 			}
 			else if (tetrahedra) {
 				//Read in tetrahedra indices:
-				if (line.compare("End") == 0)
+				if (line.find("End") != std::string::npos) {
+					std::cout << "Found end" << std::endl;
 					break;
+				}
 				std::vector<std::string> splitLine = TetrahedralMesh::split(line, ' ');
 				int indexA = stoi(splitLine[0]) - 1;
 				int indexB = stoi(splitLine[1]) - 1;
@@ -326,6 +352,15 @@ public:
 		}
 	}
 
+	virtual std::string getShapeCSVline1() override {
+		std::ostringstream os;
+		os << "5,TODO";
+		/*for (int i = 0; i < corners.size(); i++) {
+			os << "," << corners[i].x << "," << corners[i].y;
+		}*/
+		os << std::endl;
+		return os.str();
+	}
 
 	static void computeTetrahedronCentroid(Tetrahedron &th) {
 		float centroidX = (th.a.x + th.b.x + th.c.x + th.d.x) / 4.0f;

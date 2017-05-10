@@ -1,8 +1,10 @@
 #include <iostream>
+#include <sstream>
 #include <fstream>
 #include <vector>
 
-//#include <emscripten.h>
+#include <emscripten.h>
+//#include "Tests2D.h"
 
 // GLEW
 // GLFW
@@ -44,10 +46,12 @@
 
 #include "CollisionDetector.h"
 
-const bool USING_EMSCRIPTEN = false;
+const bool USING_EMSCRIPTEN = true;
 
 bool usingClosedFormImpact = false;
 bool using2DShapes = false;
+float frictionCoefficient = 0.05f;
+float restitutionCoefficient = 1.0f;
 
 
 //For cast debugging:
@@ -77,7 +81,6 @@ void window_size_callback(GLFWwindow* window, int width, int height);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 void AddPairOfPoints(std::vector<GLfloat> &vector, glm::vec3 pt1, glm::vec3 pt2);
-//void AddPoint(std::vector<GLfloat> &vector, glm::vec3 &pt, glm::vec3 &normal);
 void DrawClosestPoints(Superquadric &sq1, Superquadric &sq2, int sq1index, int sq2index, glm::vec3 &closest1, glm::vec3 &closest2, ParamPoint &pp1, ParamPoint &pp2);
 bool BoundingSphereTest(Shape &s1, Shape &s2);
 void Collision(Shape &s1, ParamPoint &contactPt1, Shape &s2, ParamPoint &contactPt2, int i, int j);
@@ -89,9 +92,7 @@ void InitOpenGL();
 void InitSetupSceneTransform();
 void InitLeftPanel();
 void InitBottomPanel();
-//void InitCameraControls();
 void InitViews();
-//void HidePanels();
 
 void PositionShapeToAdd(Shape *shape);
 void Render();
@@ -175,7 +176,7 @@ bool closeProgram = false;
 //  are animated towards each other and hit with the preset velocities at configured contact point
 bool isFreeFly = true;
 
-bool plotPrincipalFrame = false;
+bool plotPrincipalFrame = true;
 bool plotRotationAxis = false;
 
 
@@ -207,22 +208,6 @@ glm::mat4 inverseProjection;
 //Used so objects don't 're-collide' before they have  
 // moved away from another colliding objects
 std::map<std::pair<int, int>, int> framesSinceCollision;
-
-void AddTetrahedralMesh(TetrahedralMesh *mesh) {
-	PositionShapeToAdd(mesh);
-	mesh->InitVAOandVBO(shapeShader);
-
-	//Replace with AABB when complete
-	float maxDist = maxDistanceFromCentroid(*mesh);
-	mesh->boundingSphereRadius = mesh->BoundingSphereBuffer + maxDist;
-	if (mesh->boundingSphereRadius > 4.0f) {
-		mesh->scaling = .5f;
-		mesh->boundingSphereRadius *= .5f;
-	}
-	mesh->UsingBoundingSphere = true;
-
-	shapes.push_back(mesh);
-}
 
 //Defines what should be updated when shapes are clicked & dragged by mouse
 enum CursorType { translate = 0, rotate = 1, scale_uniform = 2, velocity = 3, angular_velocity = 4 };
@@ -271,6 +256,20 @@ int cameraTranslations = 0;
 int numCameraTranslations = 100;
 bool cameraTransDone = false;
 
+bool newData = false;
+
+void AddShape(Shape *shape) {
+	shape->translation = shape->centroid = glm::vec3(0.0f, 0.0f, 0.0f);
+	PositionShapeToAdd(shape);
+	shape->InitVAOandVBO(shapeShader);
+	shape->ComputeInertia();
+	shapes.push_back(shape);
+
+	newData = true;
+}
+
+Polygon *customPolygonPtr = nullptr;
+
 //ImpulseGraph *graph = nullptr;
 //void renderImpulseGraph();
 
@@ -281,7 +280,7 @@ extern "C" {
 #endif
 		getNumShapes();
 
-	bool newData = false;
+	
 
 	bool
 #ifdef EMSCRIPTEN_KEEPALIVE
@@ -295,6 +294,67 @@ extern "C" {
 		}
 
 		return toReturn;
+	}
+
+	//UI will query this each frame, stopping and resetting the UI if true
+	bool shapeOutOfScene = false;
+	bool
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		isShapeOutOfScene() {
+		bool toReturn = shapeOutOfScene;
+		if(shapeOutOfScene){
+			shapeOutOfScene = false; // Do this so once  UI queries this and find it's true, it won't still be true after a reset or something
+		}
+		return toReturn;
+	}
+
+	void 
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		createNewCustomPolygon() {
+		customPolygonPtr = new Polygon();
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		addCustomPolygonVertex(float x, float y) {
+		customPolygonPtr->AddVertex(x, y);
+	}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		doneCreatingCustomPolygon() {
+		customPolygonPtr->DoneAddingVertices();
+		static int polygonNum = 1;
+		customPolygonPtr->name = std::string("CustomPolygon" + std::to_string(polygonNum++));
+		AddShape(customPolygonPtr);
+}
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE 
+#endif
+		deselectShape() {
+		if (pickedShape != nullptr) {
+			pickedShape->objectColor = pickedShape->defaultColor;
+		}
+		pickedShape = nullptr;
+		mouseDown[0] = false;
+	}
+
+	int 
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getPickedShapeIndex() {
+		return pickedShapeIndex;
 	}
 
 	bool
@@ -415,13 +475,13 @@ extern "C" {
 #ifdef EMSCRIPTEN_KEEPALIVE
 		EMSCRIPTEN_KEEPALIVE
 #endif
-		getShapeFriction(unsigned int shapeIndex);
+		getShapeFriction(/*unsigned int shapeIndex*/);
 
 	float
 #ifdef EMSCRIPTEN_KEEPALIVE
 		EMSCRIPTEN_KEEPALIVE
 #endif
-		getShapeRestitution(unsigned int shapeIndex);
+		getShapeRestitution(/*unsigned int shapeIndex*/);
 
 	float
 #ifdef EMSCRIPTEN_KEEPALIVE
@@ -438,8 +498,24 @@ extern "C" {
 #ifdef EMSCRIPTEN_KEEPALIVE
 		EMSCRIPTEN_KEEPALIVE
 #endif
-		getShapeName() {
-		return shapes[shapes.size() - 1]->name.c_str();
+		getShapeName(int index) {
+		return shapes[index]->name.c_str();
+	}
+
+	const char* 
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getContactShape1Name() {
+		return contactShape1->name.c_str();
+	}
+
+	const char*
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getContactShape2Name() {
+		return contactShape2->name.c_str();
 	}
 
 	int
@@ -454,6 +530,15 @@ extern "C" {
 		}
 		return -1;
 	}
+
+	/*
+		Used to save scene to a file and reupload
+	*/
+	const char*
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		getSceneCSV();
 
 	float
 #ifdef EMSCRIPTEN_KEEPALIVE
@@ -581,11 +666,11 @@ extern "C" {
 #endif
 		setShapeAngularVelocityZ(unsigned int shapeIndex, float value);
 
-	void
-#ifdef EMSCRIPTEN_KEEPALIVE
-		EMSCRIPTEN_KEEPALIVE
-#endif
-		setShapeAngularVelocitySpeed(unsigned int shapeIndex, float value);
+//	void
+//#ifdef EMSCRIPTEN_KEEPALIVE
+//		EMSCRIPTEN_KEEPALIVE
+//#endif
+//		setShapeAngularVelocitySpeed(unsigned int shapeIndex, float value);
 
 	void
 #ifdef EMSCRIPTEN_KEEPALIVE
@@ -621,13 +706,13 @@ extern "C" {
 #ifdef EMSCRIPTEN_KEEPALIVE
 		EMSCRIPTEN_KEEPALIVE
 #endif
-		setShapeFriction(unsigned int shapeIndex, float value);
+		setShapeFriction(/*unsigned int shapeIndex,*/ float value);
 
 	void
 #ifdef EMSCRIPTEN_KEEPALIVE
 		EMSCRIPTEN_KEEPALIVE
 #endif
-		setShapeRestitution(unsigned int shapeIndex, float value);
+		setShapeRestitution(/*unsigned int shapeIndex,*/ float value);
 
 	void
 #ifdef EMSCRIPTEN_KEEPALIVE
@@ -688,27 +773,35 @@ extern "C" {
 		AddSuperquadric(Superquadric *superquad) {
 		SuperEllipsoid::sqSolidEllipsoid(*superquad);
 		Superquadric::InitializeClosestPoints(*superquad);
-		superquad->translation = superquad->centroid = glm::vec3(0.0f, 0.0f, 0.0f);
-		PositionShapeToAdd(superquad);
-		superquad->InitVAOandVBO(shapeShader);
-		shapes.push_back(superquad);
-
-		newData = true;
+		AddShape(superquad);
 	}
 
-	void AddPolygonOnClick(int numSides);
-	void AddSquareOnClick();
-
+	//void AddSquareOnClick();
 	void
 #ifdef EMSCRIPTEN_KEEPALIVE
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		AddSphereOnClick() {
+
+		/*if (using2DShapes) {
+			AddSquareOnClick();
+		}*/
+		
+		
 		Superquadric *sphere = new Superquadric();
 		sphere->CreateSphere();
 		static int sphereNum = 1;
 		sphere->name = std::string("Sphere" + std::to_string(sphereNum++));
+		sphere->setShapeCSVcode(0);
 		AddSuperquadric(sphere);
+		/*Tetra *ico = new Tetra();
+		ico->name = "Ico";
+		ico->translation = ico->centroid = glm::vec3(0.9f, 0.0f, 0.0f);
+		PositionShapeToAdd(ico);
+		Shader shader = ColorShapeShader::getInstance().shader;
+		ico->InitVAOandVBO(shader);
+
+		AddShape(ico);*/
 	}
 
 	void
@@ -717,13 +810,10 @@ extern "C" {
 #endif
 		AddCircleOnClick() {
 		Circle *circle = new Circle();
-		circle->InitVAOandVBO(shapeShader);
-		circle->translation = circle->centroid = glm::vec3(0.0f, 0.0f, 0.0f);
-		PositionShapeToAdd(circle);
 		static int circleNum = 1;
 		circle->name = std::string("Circle" + std::to_string(circleNum++));
-		shapes.push_back(circle);
-		newData = true;
+		
+		AddShape(circle);
 	}
 
 	void
@@ -732,13 +822,9 @@ extern "C" {
 #endif
 		AddPolygonOnClick(int numSides) {
 		Polygon *polygon = new Polygon(numSides);
-		polygon->InitVAOandVBO(shapeShader);
-		polygon->translation = polygon->centroid = glm::vec3(0.0f, 0.0f, 0.0f);
-		PositionShapeToAdd(polygon);
-		static int polygonNum = 1;
-		polygon->name = std::string("Polygon" + std::to_string(polygonNum++));
-		shapes.push_back(polygon);
-		newData = true;
+		static int regpolygonNum = 1;
+		polygon->name = std::string("RegularPolygon" + std::to_string(regpolygonNum++));
+		AddShape(polygon);
 	}
 
 	void
@@ -747,13 +833,9 @@ extern "C" {
 #endif
 		AddSquareOnClick() {
 		Square *square = new Square();
-		square->InitVAOandVBO(shapeShader);
-		square->translation = square->centroid = glm::vec3(0.0f, 0.0f, 0.0f);
-		PositionShapeToAdd(square);
 		static int squareNum = 1;
 		square->name = std::string("Square" + std::to_string(squareNum++));
-		shapes.push_back(square);
-		newData = true;
+		AddShape(square);
 	}
 
 	void
@@ -762,13 +844,11 @@ extern "C" {
 #endif
 		AddTriangleOnClick() {
 		Triangle *triangle = new Triangle();
-		triangle->InitVAOandVBO(shapeShader);
-		triangle->translation = triangle->centroid = glm::vec3(0.0f, 0.0f, 0.0f);
-		PositionShapeToAdd(triangle);
+		
 		static int triangleNum = 1;
 		triangle->name = std::string("Triangle" + std::to_string(triangleNum++));
-		shapes.push_back(triangle);
-		newData = true;
+		
+		AddShape(triangle);
 	}
 
 
@@ -839,8 +919,12 @@ extern "C" {
 
 		if (!isFreeFly) {
 			int numShapes = getNumShapes();
-			for (int i = 0; i < numShapes; i++) {
+			/*for (int i = 0; i < numShapes; i++) {
 				shapes[i]->centroid = shapes[i]->translation = shapes[i]->centroid + -shapes[i]->curVelocity;
+			}*/
+
+			for (int i = 0; i < numShapes; i++) {
+				shapes[i]->BackwardsIntegrate();
 			}
 		}
 
@@ -883,8 +967,10 @@ extern "C" {
 		//PositionShapeToAdd(tetra);
 		tetra->InitVAOandVBO(shapeShader);
 
-		ico->frictionCoefficient = tetra->frictionCoefficient = .8f;
-		ico->restitutionCoefficient = tetra->restitutionCoefficient = .95f;
+		//ico->frictionCoefficient = tetra->frictionCoefficient = .8f;
+		//ico->restitutionCoefficient = tetra->restitutionCoefficient = .95f;
+		setShapeFriction(.8f);
+		setShapeRestitution(.95f);
 
 		ico->curVelocity = glm::vec3(.95f, -.1f, .5f);
 		tetra->curVelocity = glm::vec3(1.0f, .1f, .1f);
@@ -892,10 +978,14 @@ extern "C" {
 		//tetra->curVelocity = glm::vec3(1.0f, 0.0f, 0.0f);
 
 		ico->angularVelocityAxis = glm::vec3(1.0f, 1.0f, 1.0f);
-		ico->angularVelocity = .1f;
+		//ico->angularVelocity = .1f;
+		ico->angularVelocityAxis = glm::normalize(ico->angularVelocityAxis);
+		ico->angularVelocityAxis *= .1f;
 
 		tetra->angularVelocityAxis = glm::vec3(1.0f, 1.0f, -1.0f);
-		tetra->angularVelocity = .1f;
+		//tetra->angularVelocity = .1f;
+		tetra->angularVelocityAxis = glm::normalize(tetra->angularVelocityAxis);
+		tetra->angularVelocityAxis *= .1f;
 
 		ico->mass = 3.0f;
 		tetra->mass = 1.0f;
@@ -942,6 +1032,7 @@ extern "C" {
 		superquad->u_segs = 23;
 		superquad->v_segs = 23;
 		static int superquadNum = 1;
+		superquad->setShapeCSVcode(3);
 		superquad->name = std::string("Superquadric" + std::to_string(superquadNum++));
 
 		AddSuperquadric(superquad);
@@ -967,7 +1058,7 @@ extern "C" {
 		superquad->v_segs = 23;
 		static int ellipsoidNum = 1;
 		superquad->name = std::string("Ellipsoid" + std::to_string(ellipsoidNum++));
-
+		superquad->setShapeCSVcode(2);
 		AddSuperquadric(superquad);
 	}
 
@@ -976,6 +1067,13 @@ extern "C" {
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		uploadMesh(char* meshName, char* meshData);
+
+	void
+#ifdef EMSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		uploadMeshName(char* filename);
+
 
 	void
 #ifdef EMSCRIPTEN_KEEPALIVE
@@ -1178,6 +1276,8 @@ extern "C" {
 			using2DShapes = shouldUse2D;
 			ResetOnClick();
 		}
+
+
 
 	float
 #ifdef EMSCRIPTEN_KEEPALIVE 
@@ -1602,11 +1702,11 @@ class AngularVelocityZonChange : public GLTextBox::TextChangedListener {
 	}
 };
 
-class AngularVelocitySpeedonChange : public GLTextBox::TextChangedListener {
-	void OnChange() {
-		pickedShape->angularVelocity = std::stof(bottomPanelStr.angularVelocitySpeedText->GetText());
-	}
-};
+//class AngularVelocitySpeedonChange : public GLTextBox::TextChangedListener {
+//	void OnChange() {
+//		pickedShape->angularVelocity = std::stof(bottomPanelStr.angularVelocitySpeedText->GetText());
+//	}
+//};
 
 void InitAnimationControls() {
 	//Pause/stop buttons
@@ -1758,14 +1858,14 @@ void InitBottomPanel() {
 	bottomPanelStr.angularVelocityPanel->AddView(bottomPanelStr.angularVelocityTextZ);
 	bottomPanelStr.angularVelocityTextZ->SetTextChangedListener(new AngularVelocityZonChange());
 
-	bottomPanelStr.angularVelocitySpeedLabel = new GLLabel(.22f, .1f);
+	/*bottomPanelStr.angularVelocitySpeedLabel = new GLLabel(.22f, .1f);
 	bottomPanelStr.angularVelocitySpeedLabel->SetText("Rot. Speed:");
 	bottomPanelStr.angularVelocityPanel->AddView(bottomPanelStr.angularVelocitySpeedLabel);
 
 	bottomPanelStr.angularVelocitySpeedText = new GLTextBox(.2f, .1f);
 	bottomPanelStr.angularVelocitySpeedText->SetText("0");
 	bottomPanelStr.angularVelocityPanel->AddView(bottomPanelStr.angularVelocitySpeedText);
-	bottomPanelStr.angularVelocitySpeedText->SetTextChangedListener(new AngularVelocitySpeedonChange());
+	bottomPanelStr.angularVelocitySpeedText->SetTextChangedListener(new AngularVelocitySpeedonChange());*/
 
 	views.push_back(bottomPanel);
 }
@@ -1787,15 +1887,23 @@ int numFramesToUpdatePerCollision = 1;
 
 bool go = false;
 
+const int GOAL_FPS = 60;
+
+bool testing = true;
+
 void mainLoop() {
 	// Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
 	glfwPollEvents();
+	//if (testing) {
+	//	uploadMesh("ok");
+	//	testing = !testing;
+	//}
 
 	if (glfwWindowShouldClose(window)) {
 		Close();
 
 		if (USING_EMSCRIPTEN) {
-			//emscripten_force_exit(0);
+			emscripten_force_exit(0);
 		}
 		closeProgram = true;
 		return;
@@ -1803,8 +1911,13 @@ void mainLoop() {
 
 	//Uncomment for wireframe mode:
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	float timePerFrame = 1.0f / (float)GOAL_FPS;
 	GLfloat currentFrame = (float)glfwGetTime();
 	deltaTime = currentFrame - lastFrame;
+	if (deltaTime < timePerFrame) {
+		return; 
+	}
+
 	lastFrame = currentFrame;
 
 	//if (impulseMode) {
@@ -1820,7 +1933,11 @@ void mainLoop() {
 			}
 			go = true;
 		}
-		//Update position of each superquad:
+
+
+		glm::mat4 PV = projection * camera.view;
+
+		//Update position of each shape:
 		for (unsigned int i = 0; i < shapes.size(); i++) {
 
 			if (!paused && !impulseMode) {
@@ -1829,11 +1946,22 @@ void mainLoop() {
 				}
 				shapes[i]->time += timeUpdate;
 
-				float rotationFraction = .0005f;
-				shapes[i]->applyRotation(shapes[i]->angularVelocityAxis, shapes[i]->angularVelocity * rotationFraction);
+				//float rotationFraction = .0005f;
+				if (!MathUtils::isZeroVec(shapes[i]->angularVelocityAxis)) {
+					float speed = MathUtils::magnitude(shapes[i]->angularVelocityAxis);
+					glm::vec3 axis = glm::normalize(shapes[i]->angularVelocityAxis);
+					shapes[i]->applyRotation(axis, speed * timePerFrame);// *rotationFraction);
+				}
+				shapes[i]->translation += shapes[i]->curVelocity * deltaTime;
 			}
 
-			shapes[i]->translation = shapes[i]->centroid + (shapes[i]->curVelocity * shapes[i]->time) + glm::vec3(0.0f, .5f * gravity * shapes[i]->time * shapes[i]->time, 0.0f);
+			if (!ShapeUtils::checkIfInFrustrum(PV, shapes[i]->translation)) {
+				//std::cout << "Shape went out of scene" << std::endl;
+				shapeOutOfScene = true; //UI will query this each frame, stopping and resetting the UI if true
+			}
+
+			//shapes[i]->translation = shapes[i]->centroid + (shapes[i]->curVelocity * shapes[i]->time) + glm::vec3(0.0f, .5f * gravity * shapes[i]->time * shapes[i]->time, 0.0f);
+			
 		}
 		newData = true;
 	}
@@ -1867,9 +1995,14 @@ void mainLoop() {
 			camera.cameraTarget += cameraTranslation;
 			camera.calcView();
 			cameraTranslations++;
+			//std::cout << "Camera pos: " << camera.cameraPos.x << ", " << camera.cameraPos.y << ", " << camera.cameraPos.z << std::endl;
+			//std::cout << "Camera target: " << camera.cameraPos.x << ", " << camera.cameraPos.y << ", " << camera.cameraPos.z << std::endl;
 		}
 		else {
 			cameraTransDone = true;
+			if (!USING_EMSCRIPTEN) {
+				continueImpulseOnClick();
+			}
 		}
 	}
 
@@ -1892,58 +2025,7 @@ void HandleCollision(int i, int j, ParamPoint& ppI, ParamPoint &ppJ) {
 
 int main()
 {
-	
-	Impact2D i2;
-	//  float m1, float m2, float inertia1, float inertia2, 
-	// float frictionCoeff, float restitutionCoeff,
-	//  glm::vec3 &r1, glm::vec3 &r2, 
-	//	glm::vec3 &v1, glm::vec3 &v2, float w1, float w2
-	Impact2D::Impact2DOutput output =
-		i2.impact(1.0f, 1.0f, glm::pi<float>() / 4.0f, glm::pi<float>() / 4.0f,
-			.5f, .5f, 
-			glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), 
-			glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), 0.0f, 0.0f);
 
-	std::cout << "Done" << std::endl;
-	/*Superquadric s1;
-	s1.CreateSphere();
-	s1.translation = s1.centroid = glm::vec3(.72f, 1.16f, .315f);
-
-	Superquadric s2;
-	s2.CreateSphere();
-	s2.translation = s2.centroid = glm::vec3(-.875f, .004999f, 0.0f);
-
-	ParamPoint contactPtS1 = { -.158f, -2.513f, glm::vec3(-.076f, .5855f, .1577f) };
-	glm::vec3 slidePt2 = glm::vec3(-.09122f, .6046f, .16169f);
-
-	Superquadric::SlidingSurfaceUpdate(s1, s2, contactPtS1, slidePt2);*/
-
-	/*
-	float u, v;
-	glm::vec3 pt, norm;
-	u = -MathUtils::PI / 2.0f;
-	
-	float inc = MathUtils::PI / 16.0f;
-
-	while (u <= MathUtils::PI / 2.0f) {
-
-		v = -MathUtils::PI;
-		while (v < MathUtils::PI) {
-			s1.evalParams(u, v, pt, norm);
-			//std::cout << "(" << u << ", " << v << ") = " << "(" << pt.x << ", " << pt.y << ", " << pt.z << ")" << std::endl;
-
-			//glm::vec3 dU = s1.dSigmaDv(u, v);
-			glm::vec3 dU = s1.unitnormal(pt);
-
-			if (Superquadric::IsZeroVector(dU) || Superquadric::checkVecForNaN(dU)) {
-				std::cout << "(" << u << ", " << v << ")' = " << "(" << dU.x << ", " << dU.y << ", " << dU.z << ")" << std::endl << std::endl;
-			}
-			v += inc;
-		}
-
-		u += inc;
-	}*/
-	
 	InitOpenGL();
 
 	inverseProjection = glm::inverse(projection);
@@ -1951,89 +2033,20 @@ int main()
 	if (!USING_EMSCRIPTEN) {
 		InitSetupSceneTransform();
 		InitLeftPanel();
-		//InitCameraControls();
 		InitBottomPanel();
 		InitAnimationControls();
 		InitViews();
 	}
 
-	/*TEST
-
-	MultiCollide::Quaternion q(-glm::pi<float>() / 8.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-	glm::mat4 r(glm::rotate(glm::mat4(), -glm::pi<float>() / 8.0f, glm::vec3(0.0f, 0.0f, 1.0f)));
-
-	glm::vec3 vec(1.0f, 0.0f, 0.0f);
-
-	glm::vec3 qVec = q.Rotate(vec);
-	glm::vec3 rVec = glm::vec3(r * glm::vec4(vec.x, vec.y, vec.z, 1.0f));
-
-
-	glm::mat4 a = glm::rotate(glm::mat4(), q.Angle(), q.Axis()) * i4;
-
-
-
-
-
-	glm::mat4 b = r * i4;
-
-
-	std::cout << "Test" << std::endl;*/
-
-	//double m1, m2, mu, e;
-	//double initialVperpu, initialVperpw, initialVnormaln;
-	//Matrix3d Q1, Q2, Rot, R1, R2, P1, P2, RTAN, S, A, Identity3;
-	//Vector3d v1, v2, w1, w2, r1, r2, nhat, uhat, ohat, initialVperp, initialVnormal;
-	//Vector3d nhat1, uhat1, ohat1;
-	//MatrixXd uwJuzhen(3, 2);
-	//Matrix2d B, BNew;
-	//Vector2d c;
-
-
-	//m1 = 1.0; m2 = 1.0;//mass of the two objects.
-	//mu = 0.25;//frictional coefficient.
-	//		  //constantForStepSize=0.008;
-
-	//e = 1.0; //coefficient of restitution
-
-	//r1 << 1.0, 0.0, 0.0;//the vector from center of mass to the contacting point,in local coord, r1 will be modified soon.
-	//r2 << -1.0, 0.0, 0.0;
-
-	//v1 << sqrt(2.0) / 2.0, sqrt(2.0) / 2.0, 0.0; //initial velocity
-	//v2 << 0.0, 0.0, 0.0;
-	//w1 << 0.0, 0.0, 0.0;
-	//w2 << 0.0, 0.0, 0.0;
-
-	//R1 << sqrt(2.0) / 2.0, -sqrt(2.0) / 2.0, 0.0,
-	//	sqrt(2.0) / 2.0, sqrt(2.0) / 2.0, 0.0,
-	//	0.0, 0.0, 1.0;
-	//R2 << sqrt(2.0) / 2.0, -sqrt(2.0) / 2.0, 0.0,
-	//	sqrt(2.0) / 2.0, sqrt(2.0) / 2.0, 0.0,
-	//	0.0, 0.0, 1.0;
-	//RTAN << sqrt(2.0) / 2.0, -sqrt(2.0) / 2.0, 0.0,
-	//	sqrt(2.0) / 2.0, sqrt(2.0) / 2.0, 0.0,
-	//	0.0, 0.0, 1.0;
-	//Q1 << 0.4, 0.0, 0.0,
-	//	0.0, 0.4, 0.0,
-	//	0.0, 0.0, 0.4;
-	//Q2 << 0.4, 0.0, 0.0,
-	//	0.0, 0.4, 0.0,
-	//	0.0, 0.0, 0.4;
-
-	//ImpactClosedForm initial(m1, m2, mu, e, R1, R2, Q1, Q2, RTAN,
-	//	r1, r2, v1, v2, w1, w2);
-
-	//ImpactClosedFormOuput output = initial.impact();
-	
-
-
 	if (!USING_EMSCRIPTEN) {
+		generateGraphs(true);
 		while (!closeProgram)
 			mainLoop();
 
 		return 0;
 	}
 	else {
-		//emscripten_set_main_loop(mainLoop, 0, 1);
+		emscripten_set_main_loop(mainLoop, 0, 1);
 	}
 }
 
@@ -2046,10 +2059,6 @@ bool verifyOrthogonalVecs(glm::vec3 a, glm::vec3 b, glm::vec3 c) {
 }
 
 bool arrows[4] = { false, false, false, false };
-
-//J,L orbit left and right
-//I,K orbit up and down
-bool orbits[4] = { false, false, false, false };
 
 // Is called whenever a key is pressed/released via GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
@@ -2067,23 +2076,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	else if (key == GLFW_KEY_P && action == GLFW_RELEASE) {
 		paused = false;
 	}
-
-	/*if (key == GLFW_KEY_L && impulseMode) {
-		orbits[0] = down;
-		graph->impulseCamera.orbitRight();
-	}
-	else if (key == GLFW_KEY_I && impulseMode) {
-		orbits[1] = down;
-		graph->impulseCamera.orbitUp();
-	}
-	else if (key == GLFW_KEY_K && impulseMode) {
-		orbits[2] = down;
-		graph->impulseCamera.orbitDown();
-	}
-	else if (key == GLFW_KEY_J && impulseMode) {
-		orbits[3] = down;
-		graph->impulseCamera.orbitLeft();
-	}*/
 
 	//Handle reverse time:
 	if (key == GLFW_KEY_R && action == GLFW_PRESS) {
@@ -2135,7 +2127,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 }
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+void scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
+	float xoffset = (float)x_offset;
+	float yoffset = (float)y_offset;
+	float clampMax = 5.0f;
+	float clampMin = -5.0f;
+	
+	xoffset = MathUtils::clamp(xoffset, clampMin, clampMax);
+	yoffset = MathUtils::clamp(yoffset, clampMin, clampMax);
+
 	glm::vec3 update = glm::vec3(0.0f, 0.0f, -.1f * yoffset);
 	if (pickedShape != nullptr && !icoMode) {
 		newData = true;
@@ -2154,7 +2154,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 		else if (cursorState == scale_uniform) {
 			float previousScaling = pickedShape->scaling;
 
-			pickedShape->scaling += yoffset * .05f;
+			pickedShape->scaling += (yoffset * .05f);
 
 			float newScaling = pickedShape->scaling;
 
@@ -2178,7 +2178,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 		}
 		else if (cursorState == angular_velocity && !using2DShapes) {
 			pickedShape->angularVelocityAxis += update;
-			pickedShape->angularVelocity = sqrtf(pickedShape->angularVelocityAxis.x * pickedShape->angularVelocityAxis.x + pickedShape->angularVelocityAxis.y * pickedShape->angularVelocityAxis.y + pickedShape->angularVelocityAxis.z * pickedShape->angularVelocityAxis.z);
+			//pickedShape->angularVelocity = sqrtf(pickedShape->angularVelocityAxis.x * pickedShape->angularVelocityAxis.x + pickedShape->angularVelocityAxis.y * pickedShape->angularVelocityAxis.y + pickedShape->angularVelocityAxis.z * pickedShape->angularVelocityAxis.z);
 			
 			if (!USING_EMSCRIPTEN) {
 				bottomPanelStr.angularVelocityTextX->SetText("" + std::to_string(pickedShape->angularVelocityAxis.x));
@@ -2189,8 +2189,9 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 	}
 
 	else {
-		//TODO - if 2D, make sure camera isn't behind scene
-		camera.handleScroll(update);
+		glm::vec3 newPos = camera.cameraPos + update;
+		if(!using2DShapes || newPos.z > 0.0f) //Makes sure camera doesn't go in front of scene if 2D
+			camera.handleScroll(update);
 	}
 }
 
@@ -2219,7 +2220,7 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 	mouseY = ((mouseY - .5f) / -.5f);
 
 	//If mouse button is held down, there is a selected shape, and the shapes are not the ico/tetra:
-	if (mouseDown[0] && pickedShape != nullptr /*&& !icoMode*/) { //JRS SAT
+	if (mouseDown[0] && pickedShape != nullptr && !icoMode) { 
 		newData = true;
 
 		if (cursorState == translate) {
@@ -2251,14 +2252,24 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 						}
 					}*/
 					//SAT Shapes - TODO better way of determining this
-					if (true || (shapes[i]->name.find("Tetra") != shapes[i]->name.npos
-						|| shapes[i]->name.find("Ico") != shapes[i]->name.npos) || using2DShapes || pickedShape->name.find("ube") != pickedShape->name.npos) {
+					if ((shapes[i]->name.find("Tetra") != shapes[i]->name.npos
+						|| shapes[i]->name.find("Ico") != shapes[i]->name.npos) 
+						|| using2DShapes 
+						|| pickedShape->name.find("ube") != pickedShape->name.npos
+						|| other->name.find("ube") != other->name.npos) {
+
 						ParamPoint pp1;
 						ParamPoint pp2;
 						if (checkForCollision(pickedShapeIndex, i, pp1, pp2)) {
 							if (glm::dot(update, other->translation - pickedShape->translation) > 0.0f) {
 								pickedShape->objectColor = pickedShape->contactColor;
 								other->objectColor = other->contactColor;
+
+								if (using2DShapes) {
+									ShapeSeparatingAxis& otherSAT = (ShapeSeparatingAxis&) *other;
+									ShapeSeparatingAxis& pickedSAT = (ShapeSeparatingAxis&)*pickedShape;
+									CollisionDetector::SlideS2onS1(otherSAT, pickedSAT, pp1.pt, pp2.pt, update);
+								}
 								slideUpdate = true;
 							}
 							else {
@@ -2403,7 +2414,7 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 			//MultiCollide::Quaternion orientation(pickedShape->rotation);
 			float angle = .035f;
 			glm::vec3 axis(-yoffset, xoffset, 0.0f);
-			if (xoffset < .0001f && yoffset < .0001f) {
+			if (MathUtils::abs(xoffset) < .001f && MathUtils::abs(yoffset) < .001f) {
 				return;
 			}
 
@@ -2546,7 +2557,7 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 		}
 		else if (cursorState == angular_velocity && !using2DShapes) {
 			pickedShape->angularVelocityAxis += glm::vec3(xoffset, yoffset, 0.0f);
-			pickedShape->angularVelocity = sqrtf(pickedShape->angularVelocityAxis.x * pickedShape->angularVelocityAxis.x + pickedShape->angularVelocityAxis.y * pickedShape->angularVelocityAxis.y + pickedShape->angularVelocityAxis.z * pickedShape->angularVelocityAxis.z);
+			//pickedShape->angularVelocity = sqrtf(pickedShape->angularVelocityAxis.x * pickedShape->angularVelocityAxis.x + pickedShape->angularVelocityAxis.y * pickedShape->angularVelocityAxis.y + pickedShape->angularVelocityAxis.z * pickedShape->angularVelocityAxis.z);
 			if (!USING_EMSCRIPTEN) {
 				bottomPanelStr.angularVelocityTextX->SetText("" + std::to_string(pickedShape->angularVelocityAxis.x));
 				bottomPanelStr.angularVelocityTextY->SetText("" + std::to_string(pickedShape->angularVelocityAxis.y));
@@ -2643,8 +2654,10 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 			//  where b = rayWorld DOT ( O - C),
 			//   and  c = (O - C) DOT (O - C) - r^2
 
+			int previousPickedShapeIndex = pickedShapeIndex;
 			if (pickedShape != nullptr) {
 				pickedShape->objectColor = pickedShape->defaultColor;
+				pickedShapeIndex = -1;
 			}
 			pickedShape = nullptr;
 			float minDistance = 1000000.0f;
@@ -2688,7 +2701,13 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 			if (pickedShape != nullptr) {
 				std::cout << "Picked shape: " << pickedShape->name << std::endl;
-				pickedShape->objectColor = selectedColor;
+				if (!icoMode) {
+					pickedShape->objectColor = selectedColor;
+				}
+
+				if (pickedShapeIndex != previousPickedShapeIndex) {
+
+				}
 
 				if (!USING_EMSCRIPTEN) {
 					bottomPanelStr.panel->ShowContent();
@@ -2704,7 +2723,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 					bottomPanelStr.angularVelocityTextX->SetText("" + std::to_string(pickedShape->angularVelocityAxis.x));
 					bottomPanelStr.angularVelocityTextY->SetText("" + std::to_string(pickedShape->angularVelocityAxis.y));
 					bottomPanelStr.angularVelocityTextZ->SetText("" + std::to_string(pickedShape->angularVelocityAxis.z));
-					bottomPanelStr.angularVelocitySpeedText->SetText("" + std::to_string(pickedShape->angularVelocity));
+					//bottomPanelStr.angularVelocitySpeedText->SetText("" + std::to_string(pickedShape->angularVelocity));
 				}
 			}
 			else if (!USING_EMSCRIPTEN) {
@@ -2905,21 +2924,39 @@ bool BoundingSphereTest(Shape &s1, Shape &s2) {
 
 void Collision(Shape &s1, ParamPoint &contactPt1, Shape &s2, ParamPoint &contactPt2, int i, int j) {
 
-	if (s1.is2D && s2.is2D) {
-		glm::vec3 r1 = s2.translation - s1.translation;
-		glm::vec3 r2 = s1.translation - s2.translation;
-		Impact2D impact;
-		Impact2D::Impact2DOutput output = impact.impact(s1.mass, s2.mass,
-			1.0f, 1.0f, //inertia TODO
-			0.0f, .5f, //friction, restitution coeffs,
-			r1, r2,
-			s1.curVelocity, s2.curVelocity,
-			0.0f, 0.0f);
+	if (icoMode && icoHit) {
+		return; //For the icosahedron example, they actually collide again after initial c, but
+		// just pretend it doesn't...
+	}
+
+	if (MathUtils::isZeroVec(s1.curVelocity) && MathUtils::isZeroVec(s2.curVelocity)) {
+		return; //Zero velocities, just ignore impact since results will be 0
+		//most likely user set up a scene with objects touching (e.g. a billiards break shot)
+	}
+
+	if (using2DShapes) {
+		Impact2D i2;
+		glm::vec3 r1 = glm::normalize(s2.translation - s1.translation);
+		glm::vec3 r2 = glm::normalize(s1.translation - s2.translation);
+		float angVel1 = MathUtils::magnitude(s1.angularVelocityAxis);
+		float angVel2 = MathUtils::magnitude(s2.angularVelocityAxis);
+		Impact2D::Impact2DOutput output =
+			i2.impact(s1.mass, s2.mass, s1.angularInertia[0][0], s2.angularInertia[0][0],
+				/*s1.*/frictionCoefficient, /*s1.*/ restitutionCoefficient,
+				r1, r2,
+				s1.curVelocity, s2.curVelocity,
+				angVel1, angVel2);
+
+		std::cout << "2D impact output: " << std::endl;
+		std::cout << "v1end: " << output.v1.x << ", " << output.v1.y << ", " << output.v1.z << std::endl;
+		std::cout << "v2end: " << output.v2.x << ", " << output.v2.y << ", " << output.v2.z << std::endl;
+		std::cout << "w1end: " << output.w1 << std::endl;
+		std::cout << "w2end: " << output.w2 << std::endl << std::endl;
 
 		s1.curVelocity = output.v1;
 		s2.curVelocity = output.v2;
-		s1.angularVelocity = output.w1;
-		s2.angularVelocity = output.w2;
+		s1.angularVelocityAxis = glm::vec3(0.0f, 0.0f, output.w1);
+		s2.angularVelocityAxis = glm::vec3(0.0f, 0.0f, output.w2);
 
 		return;
 	}
@@ -2930,18 +2967,40 @@ void Collision(Shape &s1, ParamPoint &contactPt1, Shape &s2, ParamPoint &contact
 	glm::mat3 R1 = glm::mat3(s1Rot);
 	glm::mat3 R2 = glm::mat3(s2Rot);
 
-	//Todo get velocity updated by time
-	// -- func
-
 	//TODO compute angular inertias and use as Q
 	glm::mat3 RTAN, Q1, Q2;
 	glm::vec3 r1, r2, v1, v2, w1, w2;
 
-	if (s1.name.find("tetra") != s1.name.npos || s1.name.find("Ico") != s1.name.npos) {
+	//Collision normal should be going from s2 into s1
+	glm::vec3 normLocal = s2.GetNormalAtPoint(contactPt2);
+
+	glm::vec4 normLocal4 = glm::vec4(normLocal.x, normLocal.y, normLocal.z, 1.0);
+	glm::vec3 normGlobal = glm::vec3(s2Rot * normLocal4);
+
+	std::cout << std::endl << "Contact normal: " << normGlobal.x << ", " << normGlobal.y << ", " << normGlobal.z << std::endl;
+	if (Superquadric::checkVecForNaN(normGlobal)) {
+		std::cout << "nan contact normal" << std::endl;
+	}
+
+	//Rotate global x-vector to contact normal
+	glm::vec3 xAxis(1.0, 0.0, 0.0);
+	RTAN = glm::mat3(MathUtils::rotationFromAtoB(xAxis, normGlobal));
+	if (!usingClosedFormImpact) {
+		glm::vec3 negX(-1.0, 0.0, 0.0);
+		RTAN = glm::mat3(MathUtils::rotationFromAtoB(negX, normGlobal));
+	}
+
+	r1 = ShapeUtils::getLocalCoordinates(contactPt1.pt, s1.translation, s1Rot, s1.scaling);
+	r2 = ShapeUtils::getLocalCoordinates(contactPt2.pt, s2.translation, s2Rot, s2.scaling);
+
+	if (icoMode/*s1.name.find("tetra") != s1.name.npos || s1.name.find("Ico") != s1.name.npos*/) {
 		/*r1 = glm::vec3(-1.0f, 0.0f, 0.0f);
 		r2 = glm::vec3(1.0f, 0.0f, 0.0f);*/
 		if (!usingClosedFormImpact) {
 			RTAN = glm::mat3(glm::rotate(MathUtils::I4, glm::pi<float>(), glm::vec3(0.0f, 1.0f, 0.0f)));
+		}
+		else {
+			RTAN = glm::mat3();
 		}
 
 		r1 = glm::vec3(-.232744f, 0.0f, 0.0f);
@@ -2957,37 +3016,14 @@ void Collision(Shape &s1, ParamPoint &contactPt1, Shape &s2, ParamPoint &contact
 			Q2 = s2.angularInertia;
 			Q1 = s1.angularInertia;
 		}
-	}
-	else {
-		Superquadric* sq = castToSuperquadric(&s2, "Collision");
 
-		//TODO RTAN for other shapes..
-		//Contact normal goes from shape2 to shape1
-		if (sq) {
-			//glm::vec3 normLocal = sq->unitnormal(Superquadric::getLocalCoordinates(contactPt1, sq->translation, s1Rot));
-			glm::vec3 normLocal = sq->NormalFromSurfaceParams(contactPt2.u, contactPt2.v);
-			glm::vec3 normGlobal = glm::vec3(sq->getRotationMatrix() * glm::vec4(normLocal.x, normLocal.y, normLocal.z, 1.0));
-
-			std::cout << std::endl << "Contact normal: " << normGlobal.x << ", " << normGlobal.y << ", " << normGlobal.z << std::endl;
-			if (Superquadric::checkVecForNaN(normGlobal)) {
-				std::cout << "nan contact normal" << std::endl;
-			}
-
-			//Rotate x-vector to contact normal
-			RTAN = glm::mat3(MathUtils::rotationFromAtoB(glm::vec3(1.0, 0.0, 0.0), normGlobal));
-			if (!usingClosedFormImpact) {
-				RTAN = glm::mat3(MathUtils::rotationFromAtoB(glm::vec3(-1.0, 0.0, 0.0), normGlobal));
-			}
-		}
-
-		r1 = ShapeUtils::getLocalCoordinates(contactPt1.pt, s1.translation, s1Rot, s1.scaling);
-		r2 = ShapeUtils::getLocalCoordinates(contactPt2.pt, s2.translation, s2Rot, s2.scaling);
+		//RTAN = glm::mat3();
 	}
 	
 	v1 = s1.curVelocity;
 	v2 = s2.curVelocity;
-	w1 = s1.angularVelocity * s1.angularVelocityAxis;
-	w2 = s2.angularVelocity * s2.angularVelocityAxis;
+	w1 = s1.angularVelocityAxis;
+	w2 = s2.angularVelocityAxis;
 
 	std::cout << "Contact pt: " << contactPt1.pt.x << ", " << contactPt1.pt.y << ", " << contactPt1.pt.z << std::endl;
 	std::cout << "v1: " << v1.x << ", " << v1.y << ", " << v1.z << std::endl;
@@ -2996,56 +3032,69 @@ void Collision(Shape &s1, ParamPoint &contactPt1, Shape &s2, ParamPoint &contact
 	std::cout << "w2: " << w2.x << ", " << w2.y << ", " << w2.z << std::endl;
 	std::cout << "r1: " << r1.x << ", " << r1.y << ", " << r1.z << std::endl;
 	std::cout << "r2: " << r2.x << ", " << r2.y << ", " << r2.z << std::endl;
+	std::cout << "R1: " << std::endl;
+	MathUtils::printMat(R1);
+	std::cout << "R2: " << std::endl;
+	MathUtils::printMat(R2);
 	std::cout << "RTAN: " << std::endl;
 	MathUtils::printMat(RTAN);
 
-	////EX 1:
-	//r1 = glm::dvec3(1.0, 0.0, 0.0);
-	//r2 = glm::dvec3(-1.0, 0.0, 0.0);
-	//v1 = glm::dvec3(1.0, 0.0, 0.0);
-	//v2 = glm::dvec3(0.0, 0.0, 0.0);
-	//w1 = w2 = glm::dvec3(0.0f);
-	//R1 = R2 = RTAN = glm::dmat3();
-
-
-	//11/3 EX:
-	/*r1 = glm::dvec3(-1.0, 0.0, 0.0);
-	r2 = glm::dvec3(1.0, 0.0, 0.0);
-	v1 = glm::dvec3(-1.0, 1.0, 0.0);
-	v2 = glm::dvec3(0.0, 0.0, 0.0);
-	w1 = w2 = glm::dvec3(0.0f);
-	R1 = R2 = RTAN = glm::dmat3();
-	Q1 = Q2 = glm::dmat3((2.0f / 5.0f) * 1.0f * 1.0f);*/ // 2/5 * m * r
-
 	if (!usingClosedFormImpact) {
 		//RTAN = glm::mat3(glm::rotate(i4, glm::pi<float>(), glm::vec3(0.0f, 0.0f, 1.0f)));
-		Impact impact1(s1.mass, s2.mass, s1.frictionCoefficient, s1.restitutionCoefficient, R1, R2,
+		Impact impact1(s1.mass, s2.mass, /*s1.*/frictionCoefficient, /*s1.*/restitutionCoefficient, R1, R2,
 			Q1, Q2, RTAN, r1, r2, v1, v2, w1, w2);
 
-		previousImpactResults = impact1.impact();
+		ImpactOutput output = impact1.impact();
+		int numPts = output.impulsePts.size();
 
-		if (previousImpactResults.impulsePts.size() == 0) {
+		//Just get a sampling of the points if there are too many
+		if (numPts > 100) {
+			std::vector<glm::vec3> impulsePts;
+			std::vector<glm::vec3> velPts;
+			
+			int offset = numPts / 100;
+			for (int i = 0; i < numPts; i += offset) {
+				impulsePts.push_back(output.impulsePts[i]);
+				velPts.push_back(output.velocityPts[i]);
+			}
+
+			previousImpactResults.v1end = output.v1end;
+			previousImpactResults.v2end = output.v2end;
+			previousImpactResults.w1end = output.w1end;
+			previousImpactResults.w2end = output.w2end;
+			previousImpactResults.endOfCompression = output.endOfCompression;
+			previousImpactResults.endOfSliding = output.endOfSliding;
+			previousImpactResults.Iend = output.Iend;
+			previousImpactResults.impulsePts = impulsePts;
+			previousImpactResults.velocityPts = velPts;
+		}
+
+		else {
+			previousImpactResults = output;
+		}
+
+		if (numPts == 0) {
 			std::cout << "No impulse pts" << std::endl;
 		}
 
 		s1.curVelocity = previousImpactResults.v1end;
 		s2.curVelocity = previousImpactResults.v2end;
 
-		s1.angularVelocity = MathUtils::magnitude(previousImpactResults.w1end);
-		s1.angularVelocityAxis = glm::normalize(previousImpactResults.w1end);
+		//s1.angularVelocity = MathUtils::magnitude(previousImpactResults.w1end);
+		s1.angularVelocityAxis = previousImpactResults.w1end;
 
-		s2.angularVelocity = MathUtils::magnitude(previousImpactResults.w2end);
-		s2.angularVelocityAxis = glm::normalize(previousImpactResults.w2end);
+		//s2.angularVelocity = MathUtils::magnitude(previousImpactResults.w2end);
+		s2.angularVelocityAxis = previousImpactResults.w2end;
 
-		/*std::cout << "v1end: " << result1.v1end.x << ", " << result1.v1end.y << ", " << result1.v1end.z << std::endl;
-		std::cout << "v2end: " << result1.v2end.x << ", " << result1.v2end.y << ", " << result1.v2end.z << std::endl;
-		std::cout << "w1end: " << result1.w1end.x << ", " << result1.w1end.y << ", " << result1.w1end.z << std::endl;
-		std::cout << "w2end: " << result1.w2end.x << ", " << result1.w2end.y << ", " << result1.w2end.z << std::endl << std::endl;
-*/
+		std::cout << "v1end: " << previousImpactResults.v1end.x << ", " << previousImpactResults.v1end.y << ", " << previousImpactResults.v1end.z << std::endl;
+		std::cout << "v2end: " << previousImpactResults.v2end.x << ", " << previousImpactResults.v2end.y << ", " << previousImpactResults.v2end.z << std::endl;
+		std::cout << "w1end: " << previousImpactResults.w1end.x << ", " << previousImpactResults.w1end.y << ", " << previousImpactResults.w1end.z << std::endl;
+		std::cout << "w2end: " << previousImpactResults.w2end.x << ", " << previousImpactResults.w2end.y << ", " << previousImpactResults.w2end.z << std::endl << std::endl;
+
+		//if (!USING_EMSCRIPTEN)
+			//return;
+
 		impulseMode = true;
-
-		/*s1.objectColor = s1.contactColor;
-		s2.objectColor = s2.contactColor;*/
 
 		contactShape1 = shapes[i];
 		contactShape2 = shapes[j];
@@ -3059,7 +3108,11 @@ void Collision(Shape &s1, ParamPoint &contactPt1, Shape &s2, ParamPoint &contact
 		prevCameraTargetX = camera.cameraTarget.x;
 		prevCameraTargetY = camera.cameraTarget.y;
 
-		cameraTranslation = (1.0f / (float)numCameraTranslations) * glm::vec3(contactPt1.pt.x, contactPt1.pt.y, 0.0f) - glm::vec3(camera.cameraPos.x, camera.cameraPos.y, 0.0f);
+		cameraTranslation = glm::vec3(contactPt1.pt.x, contactPt1.pt.y, 0.0f) - glm::vec3(camera.cameraPos.x, camera.cameraPos.y, 0.0f);
+		//std::cout << "Camera total translation vec: " << cameraTranslation.x << ", " << cameraTranslation.y << ", " << cameraTranslation.z << std::endl;
+		cameraTranslation = (1.0f / (float)numCameraTranslations) * cameraTranslation;
+		//std::cout << "Camera frame translation vec: " << cameraTranslation.x << ", " << cameraTranslation.y << ", " << cameraTranslation.z << std::endl;
+
 		cameraContactPt = glm::vec3(contactPt1.pt.x, contactPt1.pt.y, camera.cameraPos.z);
 		cameraTransDone = false;
 		cameraTranslations = 0;
@@ -3067,109 +3120,38 @@ void Collision(Shape &s1, ParamPoint &contactPt1, Shape &s2, ParamPoint &contact
 		curImpulsePt = 0;
 		curVelocityPt = 0;
 
-		//graph = new ImpulseGraph(result1, RTAN);
-
-		//std::cout << "Graph constructed" << std::endl;
-
-		//while (!graph->shouldClose()) {
-		//	glfwPollEvents();
-
-		//	GLfloat currentFrame = (float)glfwGetTime();
-		//	deltaTime = currentFrame - lastFrame;
-
-		//	if (deltaTime < .01f) {
-		//		continue;
-		//	}
-		//	lastFrame = currentFrame;
-
-		//	// Clear the colorbuffer & depthbuffer
-		//	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-		//	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		//	graph->impulseStep();
-		//	glfwSwapBuffers(window);
-		//}
-
-		//graph->cleanup();
-		//delete graph;
-
-		//impulseMode = false;
 	}
 	else {
-		ImpactClosedForm impact1(s1.mass, s2.mass, s1.frictionCoefficient, s1.restitutionCoefficient, R1, R2,
+		ImpactClosedForm impact1(s1.mass, s2.mass, /*s1.*/frictionCoefficient, /*s1.*/ restitutionCoefficient, R1, R2,
 			Q1, Q2, RTAN, r1, r2, v1, v2, w1, w2);
 
 		ImpactClosedFormOutput result1 = impact1.impact();
+
+		std::cout << "Impact output: " << std::endl;
+		std::cout << "v1end: " << result1.v1end.x << ", " << result1.v1end.y << ", " << result1.v1end.z << std::endl;
+		std::cout << "v2end: " << result1.v2end.x << ", " << result1.v2end.y << ", " << result1.v2end.z << std::endl;
+		std::cout << "w1end: " << result1.w1end.x << ", " << result1.w1end.y << ", " << result1.w1end.z << std::endl;
+		std::cout << "w2end: " << result1.w2end.x << ", " << result1.w2end.y << ", " << result1.w2end.z << std::endl << std::endl;
 
 		s1.curVelocity = result1.v1end;
 		s2.curVelocity = result1.v2end;
 
 		s1.angularVelocityAxis = result1.w1end;
-		s1.angularVelocity = glm::length(result1.w1end);
+		//s1.angularVelocity = glm::length(result1.w1end);
 		s2.angularVelocityAxis = result1.w2end;
-		s2.angularVelocity = glm::length(result1.w2end);
+		//s2.angularVelocity = glm::length(result1.w2end);
 
 		/*std::cout << "v1end: " << result1.v1end.x << ", " << result1.v1end.y << ", " << result1.v1end.z << std::endl;
 		std::cout << "v2end: " << result1.v2end.x << ", " << result1.v2end.y << ", " << result1.v2end.z << std::endl;
 		std::cout << "w1end: " << result1.w1end.x << ", " << result1.w1end.y << ", " << result1.w1end.z << std::endl;
-		std::cout << "w2end: " << result1.w2end.x << ", " << result1.w2end.y << ", " << result1.w2end.z << std::endl;
+		std::cout << "w2end: " << result1.w2end.x << ", " << result1.w2end.y << ", " << result1.w2end.z << std::endl;*/
 
-		std::cout << "Iend: " << result1.Iend.x << ", " << result1.Iend.y << ", " << result1.Iend.z << std::endl << std::endl;*/
-
+		std::cout << "Iend: " << result1.Iend.x << ", " << result1.Iend.y << ", " << result1.Iend.z << std::endl << std::endl;
 	}
 
-	////EX 2:
-	//r1 = glm::vec3(1.0, 0.0f, 0.0);
-	//r2 = glm::vec3(-1.0, 0.0, 0.0);
-	//v1 = glm::vec3(1.0, 0.0, 0.0);
-	//w1 = glm::vec3(0.0, 1.0, 0.0);
-	//v2 = w2 = glm::vec3(0.0);
-	//R1 = R2 = RTAN = glm::mat3();
-
-	//Impact impact2(s1.mass, s2.mass, s1.frictionCoefficient, s1.restitutionCoefficient, R1, R2,
-	//	Q1, Q2, RTAN, r1, r2, v1, v2, w1, w2);
-
-	//Impact::ImpactOutput result2 = impact2.impact();
-
-	//s1.curVelocity = result2.v1end;
-	//s2.curVelocity = result2.v2end;
-
-	////EX 3:
-	//r1 = glm::vec3(1.0f, 0.0f, 0.0f);
-	//r2 = glm::vec3(-1.0f, 0.0f, 0.0f);
-	//double sqrt2 = sqrt(2.0) / 2.0;
-	//v1 = glm::dvec3(sqrt2, sqrt2, 0.0);
-	//v2 = w1 = w2 = glm::vec3(0.0f);
-	//R1 = R2 = RTAN = glm::dmat3(glm::rotate(glm::dmat4(), glm::pi<double>() / 4.0f, glm::dvec3(0.0f, 0.0f, 1.0f)));
-	//Q1 = Q2 = glm::mat3(1.0f);
-
-	//Impact impact(s1.mass, s2.mass, s1.frictionCoefficient, s1.restitutionCoefficient, R1, R2,
-	//	Q1, Q2, RTAN, r1, r2, v1, v2, w1, w2);
-	//
-	//Impact::ImpactOutput result = impact.impact();
-
-	//s1.curVelocity = result.v1end;
-	//s2.curVelocity = result.v2end;
+	//Sometimes impact takes so long that the time difference makes it so shapes are too far away
+	lastFrame = (float)glfwGetTime();
 }
-
-//void renderImpulseGraph() {
-//	if (!graph->shouldClose()) {
-//
-//		// Clear the colorbuffer & depthbuffer
-//		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-//		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-//
-//		graph->impulseStep();
-//
-//		glfwSwapBuffers(window);
-//	}
-//	else {
-//		graph->cleanup();
-//		delete graph;
-//
-//		impulseMode = false;
-//	}
-//}
 
 //Called on startup
 void InitOpenGL() {
@@ -3306,6 +3288,9 @@ void PositionShapeToAdd(Shape *shape) {
 	}
 }
 
+bool useOpenGLframe = false;
+glm::mat4 rotToFrame = glm::rotate(MathUtils::I4, -MathUtils::PI_OVER_2, glm::vec3(1.0f, 0.0f, 0.0f));
+
 void Render() {
 
 	shapeShader.Use();
@@ -3350,7 +3335,10 @@ void Render() {
 		}
 
 		if (plotPrincipalFrame) {
-			float scaling = shape->scaling * shape->boundingSphereRadius * 1.5f;
+			float scaling = shape->scaling * (shape->boundingSphereRadius + .05f);
+			if (!useOpenGLframe && !using2DShapes) {
+				shapeRot = shapeRot * rotToFrame;
+			}
 			Frame::Draw(shape->translation, shapeRot, scaling, using2DShapes);
 		}
 		if (plotRotationAxis) {
@@ -3366,7 +3354,7 @@ void Render() {
 				shape->DrawInitialVelocity(shapeShader);
 			}
 
-			if (cursorState == angular_velocity) {
+			if (cursorState == angular_velocity && !using2DShapes) {
 				glUniform4f(ShapeShader::getInstance().objectColorLoc, 1.0f, 0.5f, 0.0f, 1.0f);
 				shape->DrawInitialAngularVelocity(shapeShader);
 			}
@@ -3374,8 +3362,16 @@ void Render() {
 	}
 
 	//Render global frame in lower left corner:
-	glm::vec3 globalFramePos = glm::vec3(-.85f, -.85f, 0.0f);
-	glm::mat4 frameRot = glm::inverse(MathUtils::rotationFromAtoB(glm::vec3(0.0f, 0.0f, -1.0f), glm::normalize(camera.cameraTarget - camera.cameraPos)));
+	glm::vec3 globalFramePos = glm::vec3(-.9f, -.9f, 0.0f);
+	glm::vec3 vecToCam(0.0f, 0.0f, -1.0f);
+	glm::vec3 camPosToTarget = glm::normalize(camera.cameraTarget - camera.cameraPos);
+	glm::mat4 invRot = MathUtils::rotationFromAtoB(vecToCam, camPosToTarget);
+	glm::mat4 frameRot = glm::inverse(invRot); 
+
+	if (!useOpenGLframe && !using2DShapes) {
+		frameRot = frameRot * rotToFrame;
+	}
+	
 	Camera frameCam;
 	frameCam.cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 	frameCam.cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -3540,35 +3536,39 @@ float getShapeAngularVelocityZ(unsigned int shapeIndex) {
 }
 
 float getShapeAngularVelocitySpeed(unsigned int shapeIndex) {
-	return shapes[shapeIndex]->angularVelocity;
+	return MathUtils::magnitude(shapes[shapeIndex]->angularVelocityAxis);
 }
 
 float getShapeRotationAxisX(unsigned int shapeIndex) {
-	return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).x;
+	return shapes[shapeIndex]->rotationAxis.x;
+	//return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).x;
 }
 
 float getShapeRotationAxisY(unsigned int shapeIndex) {
-	return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).y;
+	return shapes[shapeIndex]->rotationAxis.y;
+	//return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).y;
 }
 
 float getShapeRotationAxisZ(unsigned int shapeIndex) {
-	return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).z;
+	return shapes[shapeIndex]->rotationAxis.z;
+	//return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).z;
 }
 
 float getShapeRotationAngle(unsigned int shapeIndex) {
-	return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).w;
+	return shapes[shapeIndex]->rotationAngle;
+	//return glm::quat_cast(shapes[shapeIndex]->getRotationMatrix()).w;
 }
 
 float getShapeMass(unsigned int shapeIndex) {
 	return shapes[shapeIndex]->mass;
 }
 
-float getShapeFriction(unsigned int shapeIndex) {
-	return shapes[shapeIndex]->frictionCoefficient;
+float getShapeFriction(/*unsigned int shapeIndex*/) {
+	return /*shapes[shapeIndex]->*/frictionCoefficient;
 }
 
-float getShapeRestitution(unsigned int shapeIndex) {
-	return shapes[shapeIndex]->restitutionCoefficient;
+float getShapeRestitution(/*unsigned int shapeIndex*/) {
+	return /*shapes[shapeIndex]->*/restitutionCoefficient;
 }
 
 float getShapeScale(unsigned int shapeIndex) {
@@ -3631,9 +3631,9 @@ void setShapeAngularVelocityZ(unsigned int shapeIndex, float value) {
 	//shapes[shapeIndex]->angularVelocity = sqrtf(shapes[shapeIndex]->angularVelocityAxis.x * shapes[shapeIndex]->angularVelocityAxis.x + shapes[shapeIndex]->angularVelocityAxis.y * shapes[shapeIndex]->angularVelocityAxis.y + shapes[shapeIndex]->angularVelocityAxis.z * shapes[shapeIndex]->angularVelocityAxis.z);
 }
 
-void setShapeAngularVelocitySpeed(unsigned int shapeIndex, float value) {
-	shapes[shapeIndex]->angularVelocity = value;
-}
+//void setShapeAngularVelocitySpeed(unsigned int shapeIndex, float value) {
+//	shapes[shapeIndex]->angularVelocity = value;
+//}
 
 void setShapeRotationAxisX(unsigned int shapeIndex, float value) {
 	if (!icoMode) {
@@ -3663,12 +3663,12 @@ void setShapeMass(unsigned int shapeIndex, float value) {
 	shapes[shapeIndex]->mass = value;
 }
 
-void setShapeFriction(unsigned int shapeIndex, float value) {
-	shapes[shapeIndex]->frictionCoefficient = value;
+void setShapeFriction(/*unsigned int shapeIndex,*/ float value) {
+	/*shapes[shapeIndex]->*/frictionCoefficient = value;
 }
 
-void setShapeRestitution(unsigned int shapeIndex, float value) {
-	shapes[shapeIndex]->restitutionCoefficient = value;
+void setShapeRestitution(/*unsigned int shapeIndex, */ float value) {
+	/*shapes[shapeIndex]->*/restitutionCoefficient = value;
 }
 
 void setShapeScale(unsigned int shapeIndex, float value) {
@@ -3677,21 +3677,16 @@ void setShapeScale(unsigned int shapeIndex, float value) {
 	}
 }
 
-std::string getShapeName(unsigned int shapeIndex) {
-	if (shapeIndex < 0 || shapeIndex >= shapes.size()) {
-		std::cout << "Not a valid shape index in getShapeName" << std::endl;
-		return "NOT VALID SHAPE INDEX";
-	}
-
-	return shapes[shapeIndex]->name;
-}
-
 void removeShape(unsigned int index) {
 	Shape *shapeToDelete = shapes[index];
 	shapes.erase(shapes.begin() + index);
 
 	if (pickedShape == shapeToDelete) {
 		pickedShape = nullptr;
+		pickedShapeIndex = -1;
+	}
+	else if (index < pickedShapeIndex) {
+		pickedShapeIndex--; //pickedShape got moved up in the vector
 	}
 
 	delete shapeToDelete;
@@ -3750,23 +3745,69 @@ void createCustomSuperquadric(float a1, float a2, float a3, float e1, float e2) 
 	superquad->v_segs = 23;
 	static int superquadNum = 1;
 	superquad->name = std::string("Custom" + std::to_string(superquadNum++));
-
+	superquad->setShapeCSVcode(4);
 	AddSuperquadric(superquad);
 }
 
-//void uploadMesh(char* filePath) {
-//	TetrahedralMesh *mesh = new TetrahedralMesh(std::string(filePath));
-//	AddTetrahedralMesh(mesh);
-//}
+void uploadMeshName(char* filePath) {
+	TetrahedralMesh *mesh = new TetrahedralMesh("C:\\Users\\Jacob\\Desktop\\Work\\meshFiles\\testTetra.txt");
+	mesh->ComputeCentroid();
+	mesh->Translate(-mesh->centroid);
+	mesh->ComputeInertia();
+
+	//Replace with AABB when complete
+	float maxDist = maxDistanceFromCentroid(*mesh);
+	mesh->boundingSphereRadius = mesh->BoundingSphereBuffer + maxDist;
+	if (mesh->boundingSphereRadius > 4.0f) {
+		mesh->scaling = .5f;
+		mesh->boundingSphereRadius *= .5f;
+	}
+	mesh->UsingBoundingSphere = true;
+	AddShape(mesh);
+}
 
 void uploadMesh(char* meshName, char* meshData) {
+	meshName = "Mesh\0";
+	meshData = "Mass\n 25.0\nVertices\n-1.0 -1.0 -1.0\n1.0 1.0 1.0\n-1.0 -1.0 1.0\n1.0 -1.0 -1.0\nTetrahedra\n1 2 3 4\nEnd\0";
 	TetrahedralMesh *mesh = new TetrahedralMesh(meshName, meshData);
 	mesh->ComputeCentroid();
 	mesh->Translate(-mesh->centroid);
-	mesh->ComputeMeshAttributes();
-	AddTetrahedralMesh(mesh);
+	mesh->ComputeInertia();
+
+	//Replace with AABB when complete
+	float maxDist = maxDistanceFromCentroid(*mesh);
+	mesh->boundingSphereRadius = mesh->BoundingSphereBuffer + maxDist;
+	if (mesh->boundingSphereRadius > 4.0f) {
+		mesh->scaling = .5f;
+		mesh->boundingSphereRadius *= .5f;
+	}
+	mesh->UsingBoundingSphere = true;
+
+	AddShape(mesh);
 }
 
 void duplicateShape(unsigned int shapeIndex) {
 	Shape *shapePtr = shapes[shapeIndex];
+}
+
+/*
+	First line of csv contains scene settings
+	Then shapes are listed
+    Each shape will have 2 lines in the csv
+    First line is a # indicating the shape type, followed by any special info (e.g. superquad params)
+    2nd line is shape orientation & other properties (velocity, mass, etc.) same layout for all shapes
+ */
+const char* getSceneCSV() {
+	std::ostringstream os;
+
+	os << using2DShapes << "," << frictionCoefficient << "," << restitutionCoefficient << std::endl;
+
+	std::vector<Shape*>::iterator iter;
+	for (iter = shapes.begin(); iter != shapes.end(); iter++) {
+		os << (*iter)->getShapeCSVline1();
+		os << (*iter)->getShapeCSVline2();
+	}
+	os.flush();
+	std::string csv = os.str();
+	return csv.c_str();
 }

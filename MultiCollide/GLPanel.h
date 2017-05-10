@@ -123,7 +123,7 @@ public:
 		}
 	}
 
-	virtual void DeleteBuffers() {
+	virtual void DeleteBuffers() override {
 		GLView::DeleteBuffers();
 
 		for (std::vector<GLView*>::iterator it = this->mSubviews.begin(); it != this->mSubviews.end(); it++) {
