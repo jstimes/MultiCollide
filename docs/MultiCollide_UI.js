@@ -174,8 +174,6 @@ function multicollide_init() {
 	}).on("mouseenter", function() {
 		$("#2Dsubmenu").show();
 	});
-	
-	var isSettingUpScene = true;
  
 	var addShape = function(offset) {
 		console.log("AddShape");
@@ -765,17 +763,7 @@ function multicollide_init() {
 		}
 		else {
 			//Clicked stop:
-			if(isImpulseMode){
-				isImpulseMode = false;
-				toggleImpulseControls();
-			}
-			
-			isSettingUpScene = !isSettingUpScene;
-			_StopOnClick();
-			$("#run").attr("value", "Run");
-			$("#reset").attr("value", "Reset Scene");
-            
-            $("#restoreBtn").button({'disabled': false});
+			stopCallback();
 		}
 	});
 	
@@ -878,9 +866,24 @@ function clearSelection() {
     }
 }
 
+function stopCallback() {
+    if(isImpulseMode){
+        isImpulseMode = false;
+        toggleImpulseControls();
+    }
+    
+    isSettingUpScene = !isSettingUpScene;
+    _StopOnClick();
+    $("#run").attr("value", "Run");
+    $("#reset").attr("value", "Clear Scene");
+    
+    $("#restoreBtn").button({'disabled': false});
+}
+
 var jacobs_frame = false;
 var sceneShapesOpen = true;
 var icoMode = false;
+var isSettingUpScene = true;
 
 /*
     When run is clicked, all properties of the shapes in the scene
@@ -1021,6 +1024,9 @@ function multicollide_update() {
 		pickedShapeIndex = currentlyPickedIndex;
 		openPickedShapeInfo();
 	}
+    if(_isShapeOutOfScene()){
+        stopCallback();
+    }
 }
  
  window.onresize = function() {
