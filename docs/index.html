@@ -27,18 +27,96 @@
     <div id='o-wrapper' class='o-wrapper'>
 	
 	<div id='top'>
-		<span style='font-size: 22px;'>MultiCollide: A rigid body impact simulator</span> &nbsp;
-		<a href='#' id="c-button--slide-top" >Settings</a>&nbsp; | &nbsp;
-		<a href='documentation.html'>Documentation & Issues</a>
+		<!--a href='#' id="c-button--slide-top" >Settings</a>&nbsp; | &nbsp;-->
+        <div id='constantControls' style= 'float: right; margin-right: 95px;'>
+            <table>
+                <tr>
+                    <td>
+                        <label><b>&mu; (friction coefficient):&nbsp;</b></label></td>
+                            <td>
+                            <input type='text' id='friction' size='3'>
+                        
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label><b>e (restitution coefficient):&nbsp;</b></label></td>
+                            <td><input type='text' id='restitution' size='3'>
+                        
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div id='settingsContainer'>
+        
+            <!-- Title -->
+            <span style='font-size: 22px;'>MultiCollide: A rigid body impact simulator</span>
+            <br>
+            <!--Dimension -->
+            <div class="dropdown">
+                <button class="dropbtn">Dimension</button>
+                <div class="dropdown-content">
+                    <label><input type='radio' name='dimension' id='3D' value='3D'>3D</label>
+                    <label><input type='radio' name='dimension' id='2D' value='2D'>2D</label>
+                </div>
+            </div>
+            
+            <!--Mode -->
+            <div class="dropdown">
+                <button class="dropbtn">Mode</button>
+                <div class="dropdown-content">
+                    <label><input type='checkbox' id='collisionMode'>Free Fly</label>
+                </div>
+            </div>
+            
+            <!--Rotation display -->
+            <div class="dropdown">
+                <button class="dropbtn">Rotation display</button>
+                <div class="dropdown-content">
+                    <label><input type='radio' name='rotationDisplay' value='rotationAxis'>Plot Rotation Axis</label>
+					<label><input type='radio' name='rotationDisplay' value='principalFrame'>Plot Principal Frame</label>
+					<label><input type='radio' name='rotationDisplay' value='noRotationDisplay'>No Display</label>
+                </div>
+            </div>
+            
+            <!--Visualization -->
+            <div class="dropdown">
+                <button class="dropbtn">Visualizations</button>
+                <div class="dropdown-content">
+                    <label><input type='checkbox' id='showImpulse' value='true'>Impulse Accumulation</label>
+					<label><input type='checkbox' id='showVelocity' value='true'>Sliding Velocity Curve (Hodograph)</label>
+                </div>
+            </div>
+            
+            <!-- docs link -->
+            <div class='dropdown'>
+                <a href='documentation.html' style='display: inline;'>
+                    <button class='dropbtn'>Documentation</button>
+                </a>
+            </div>
+        </div>
+		
 		
 		<!--span style='margin-left: 400px;'>
 			<label>&mu; (friction coefficient):&nbsp;<input type='text' id='friction' size='5'></label>
 			<label style='margin-left: 10px;'>e (restitution coefficient):&nbsp;<input type='text' id='restitution' size='5'></label>
 		</span-->
+        
 	</div>
 
      <div id='leftSidePanel'>
-		 <ul id='3DaddShapeMenu' style='width: 150px;'>
+		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='run' value='Run'><br>
+        <input type='button' class='ui-button ui-widget ui-corner-all main-button' id='restoreBtn' value='Restore Scene' disabled><br>
+		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='reset' value='Clear Scene'><br>
+		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='resetCamera' value='Reset Camera'>
+		
+        <br><br>
+        
+        <input type='button' id='uploadSceneBtn' class='ui-button ui-widget ui-corner-all main-button' value='Upload Scene'>
+		<br>
+		<br>
+        
+        <ul id='3DaddShapeMenu' style='width: 150px;'>
 			<li><div>Add Shape</div>
 				<ul id='3Dsubmenu'>
 				<li id='addSphereBtn'><div>Sphere</div></li>
@@ -61,15 +139,7 @@
 				</ul>
 			</li>
 		</ul>
-		<br>
-		<input type='button' id='uploadSceneBtn' class='ui-button ui-widget ui-corner-all main-button' value='Upload Scene'>
-		<br>
-		<br>
-		 <input type='button' class='ui-button ui-widget ui-corner-all main-button' id='run' value='Run'><br>
-		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='reset' value='Reset Scene'><br>
-		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='resetCamera' value='Reset Camera'>
-			
-			<br><br>
+        <br>
 			<span><b>Cursor state:</b></span><br>
 			<label class='cursor-label'>
 			<input class='cursorState icoDisable' type='radio' name='mode' id='translate' checked>Translate
@@ -131,9 +201,16 @@
 	</ol>
 	<input type='button' id='addAnotherVertexBtn' value='Add Another Vertex'>
 	<input type='button' id='removeVertexBtn' value='Remove Last Vertex'>-->
-	<span>Enter vertices in counter-clockwise order, one per line</span><br>
-	<textarea rows='4' cols='20' id='customVerticesTextArea' placeholder='x, y'></textarea><br>
-	<input type='button' id='addCustomPolygonBtn' value='Add Shape'>
+	<!-- <span>Enter vertices in counter-clockwise order, one per line</span><br> -->
+	<!-- <textarea rows='4' cols='20' id='customVerticesTextArea' placeholder='x, y'></textarea><br> -->
+	<!-- <input type='button' id='addCustomPolygonBtn' value='Add Shape'> -->
+    <span>Click in the canvas to start, then click again for each vertex, and close the shape by clicking lastly at the original vertex.</span><br>
+    <input type='button' id='resetCustomPolygonCanvasBtn' value='Reset'>
+    <input type='button' id='addCustomPolygonCanvasBtn' value='Add' disabled><br><br>
+    <canvas id='polygonCanvas' width="200" height="200" style='border: 1px solid red;'>
+    
+    </canvas>
+
 </div>
 
 <div id='meshModal' title='Add Tetrahedral Mesh'>
@@ -159,6 +236,26 @@
 	<div id='mainContent'>
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 	</div>
+    
+    <!-- <div id='constantControls' style= 'float: right;'> -->
+        <!-- <table> -->
+            <!-- <tr> -->
+				<!-- <td> -->
+					<!-- <!--input type='button' id='impactSettingsBtn' value='Impact Settings'--> 
+					<!-- <label><b>&mu; (friction coefficient):&nbsp;</b> -->
+						<!-- <input type='text' id='friction' size='5'> -->
+					<!-- </label> -->
+				<!-- </td> -->
+            <!-- </tr> -->
+            <!-- <tr> -->
+				<!-- <td> -->
+					<!-- <label><b>e (restitution coefficient):&nbsp;</b> -->
+						<!-- <input type='text' id='restitution' size='5'> -->
+					<!-- </label> -->
+				<!-- </td> -->
+			<!-- </tr> -->
+        <!-- </table> -->
+    <!-- </div> -->
 	
 	<div id='sceneShapesShowBtnDiv' style='display: none;'>
 		<input type='button' class='ui-button ui-widget ui-corner-all' 
@@ -166,6 +263,24 @@
 	</div>
 	
 	<div id='rightSidePanel'>
+        <!-- <div id='constantControls' > -->
+            <!-- <table> -->
+                <!-- <tr> -->
+                    <!-- <td> -->
+                        <!-- <label><b>&mu; (friction coefficient):&nbsp;</b> -->
+                            <!-- <input type='text' id='friction' size='5'> -->
+                        <!-- </label> -->
+                    <!-- </td> -->
+                <!-- </tr> -->
+                <!-- <tr> -->
+                    <!-- <td> -->
+                        <!-- <label><b>e (restitution coefficient):&nbsp;</b> -->
+                            <!-- <input type='text' id='restitution' size='5'> -->
+                        <!-- </label> -->
+                    <!-- </td> -->
+                <!-- </tr> -->
+            <!-- </table> -->
+        <!-- </div> -->
 	  <div id='sceneShapesDiv'>
 		<span>Scene Shapes </span>&nbsp;&nbsp;
 		<input type='button' class='ui-button ui-widget ui-corner-all' 
@@ -191,7 +306,7 @@
 	</div> <!-- o-wrapper -->
 	
 	<!-- Settings Menu -->
-	<nav id="c-menu--slide-top" class="c-menu c-menu--slide-top">
+	<!--nav id="c-menu--slide-top" class="c-menu c-menu--slide-top">
 		<table id='table-menu'>
 			<tr>
 				<td>
@@ -218,23 +333,23 @@
 					<label><input type='checkbox' id='showVelocity' value='true'>Sliding Velocity Curve (Hodograph)</label><br>
 				</td>
 			</tr>
-			<tr>
-				<td>
-				</td>
-				<td colspan=2>
-					<!--input type='button' id='impactSettingsBtn' value='Impact Settings'-->
-					<label><b>&mu; (friction coefficient):&nbsp;</b>
-						<input type='text' id='friction' size='5'>
-					</label>
-				</td>
-				<td colspan=2>
-					<label style='margin-left: 10px;'><b>e (restitution coefficient):&nbsp;</b>
-						<input type='text' id='restitution' size='5'>
-					</label>
-				</td>
-			</tr>
-		</table>
-	</nav>
+			<!-- <tr> -->
+				<!-- <td> -->
+				<!-- </td> -->
+				<!-- <td colspan=2> -->
+					<!-- <!--input type='button' id='impactSettingsBtn' value='Impact Settings'-->
+					<!-- <label><b>&mu; (friction coefficient):&nbsp;</b> -->
+						<!-- <input type='text' id='friction' size='5'> -->
+					<!-- </label> -->
+				<!-- </td> -->
+				<!-- <td colspan=2> -->
+					<!-- <label style='margin-left: 10px;'><b>e (restitution coefficient):&nbsp;</b> -->
+						<!-- <input type='text' id='restitution' size='5'> -->
+					<!-- </label> -->
+				<!-- </td> -->
+			<!-- </tr> -->
+		<!--/table-->
+	<!--/nav-->
 		
 	<!-- Mask for when settings is open -->
 	<div id="c-mask" class="c-mask"></div>
@@ -348,8 +463,8 @@
 
 </script>
 
-<script src="menu.js"></script>
-<script>
+<!--script src="menu.js"></script-->
+<!--script>
   /**
    * Slide top menu instantiation and action.
    */
@@ -366,6 +481,6 @@
     slideTop.open();
   });
 
-</script>
+</script-->
   </body>
 </html>

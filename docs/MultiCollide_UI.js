@@ -7,7 +7,10 @@ function multicollide_init() {
 		  
 	$("#shapesAccordion").accordion({
 	  collapsible: true,
-	  heightStyle: "fill"
+	  //heightStyle: "fill",
+      heightStyle: 'panel',
+      fillSpace: true,
+      //autoHeight: true,
 	});
 	
 	var customSuperquadricDialog = $("#customSuperquadricModal").dialog({
@@ -27,8 +30,8 @@ function multicollide_init() {
 	
 	var customPolygonDialog = $("#customPolygonModal").dialog({
 		autoOpen: false,
-		height: 400,
-		width: 400,
+		height: 600,
+		width: 800,
 		modal: true,	
 		buttons: {
 			Cancel: function() {
@@ -201,7 +204,7 @@ function multicollide_init() {
 			"<li><a href='#orientation'>Orientation</a></li>" +
 			"<li><a href='#movement'>Velocities</a></li></ul>" +
 			
-			"<div id='orientation'>" +
+			"<div id='orientation' class='tab-div'>" +
 			"<b>Position:</b><br>" +
 			"x: <input style='width:50px' type='text' class='positionx shapeData " + shapeName + "' value='" + shape["positionx"] + "'><br>" +
 			"y: <input style='width:50px' type='text' class='positiony shapeData " + shapeName + "'><br>";
@@ -226,7 +229,7 @@ function multicollide_init() {
 			
 			"</div>" +
 	
-			"<div id='physical'>" +
+			"<div id='physical' class='tab-div'>" +
 			"<b>Scale: </b><input style='width:50px' type='text' class='scale shapeData " + shapeName + "'><br><br>" +
 	
 			"<b>Mass: </b><input style='width:50px' type='text' class='mass shapeData " + shapeName + "'><br><br>" +
@@ -235,7 +238,7 @@ function multicollide_init() {
 			"<span class='angularInertia shapeData " + shapeName + "'></span><br><br>" +
 			"</div>" + 
 			
-			"<div id='movement'>" +
+			"<div id='movement' class='tab-div'>" +
 			"<b>Velocity:</b><br>" +
 			"x: <input style='width:50px' type='text' class='velocityx shapeData " + shapeName + "'><br>" +
 			"y: <input style='width:50px' type='text' class='velocityy shapeData " + shapeName + "'><br>";
@@ -243,6 +246,8 @@ function multicollide_init() {
 			if(!using2D) {
 				html += "z: <input style='width:50px' type='text' class='velocityz shapeData " + shapeName + "'>";
 			}
+            
+            html += "<br>speed (m/s): <span class='velocityspeed " + shapeName + "'>0</span>";
 			
 			html += "<br><br>" + 
 			"<b>Angular Velocity:</b><br>";
@@ -252,15 +257,19 @@ function multicollide_init() {
 				"x: <input style='width:50px' type='text' class='angularvelocityx shapeData " + shapeName + "'><br>" +
 				"y: <input style='width:50px' type='text' class='angularvelocityy shapeData " + shapeName + "'><br>" +
 				"z: <input style='width:50px' type='text' class='angularvelocityz shapeData " + shapeName + "'><br>";
+				html += "speed (deg/s): <span style='width:50px' type='text' class='angularvelocityspeed " + shapeName + "'>0</span><br><br>";
+			}
+			else {
+				html += "speed (deg/s): <input style='width:50px' type='text' class='angularvelocityy shapeData " + shapeName + "'><br>";
 			}
 			
 			//html += "speed (deg/s): <input style='width:50px' type='text' class='angularvelocityspeed shapeData " + shapeName + "'><br><br>" +
-			html += "speed (deg/s): <span style='width:50px' type='text' class='angularvelocityspeed " + shapeName + "'>0</span><br><br>" +
 			
-			"<!--input type='button' class='duplicateShape' value='Add Duplicate'-->" +
+			
+			html += "<!--input type='button' class='duplicateShape' value='Add Duplicate'-->" +
 			"</div>" + 
 			
-			"</div></div>";
+			"</div>";
 			
 		$('#shapesAccordion').append(html);		
 		
@@ -349,29 +358,35 @@ function multicollide_init() {
 			var zy = _getShapeAngularInertiaZY(index);
 			var zz = _getShapeAngularInertiaZZ(index);
 			
-			var table = "<span>Angular Inertia: </span><br><br>"+
-			"<table class='matrix angularInertiaMatrix'>" + 
-				"<tr>" + 
-					"<td>" + roundNumber(xx) + "</td>" + 
-					"<td>" + roundNumber(xy) + "</td>" + 
-					"<td>" + roundNumber(xz) + "</td>" + 
-				"</tr>" + 
-				"<tr>" + 
-					"<td>" + roundNumber(yx) + "</td>" + 
-					"<td>" + roundNumber(yy) + "</td>" + 
-					"<td>" + roundNumber(yz) + "</td>" + 
-				"</tr>" + 
-				"<tr>" + 
-					"<td>" + roundNumber(zx) + "</td>" + 
-					"<td>" + roundNumber(zy) + "</td>" + 
-					"<td>" + roundNumber(zz) + "</td>" + 
-				"</tr>" + 
-				"</table>";
-				
-			$("#" + sectionId + " .angularInertia").append(table);
-			$("#" + sectionId + " .computeInertia").hide();
+            if(!using2D){
+                var table = "<span>Angular Inertia: </span><br><br>"+
+                "<table class='matrix angularInertiaMatrix'>" + 
+                    "<tr>" + 
+                        "<td>" + roundNumber(xx) + "</td>" + 
+                        "<td>" + roundNumber(xy) + "</td>" + 
+                        "<td>" + roundNumber(xz) + "</td>" + 
+                    "</tr>" + 
+                    "<tr>" + 
+                        "<td>" + roundNumber(yx) + "</td>" + 
+                        "<td>" + roundNumber(yy) + "</td>" + 
+                        "<td>" + roundNumber(yz) + "</td>" + 
+                    "</tr>" + 
+                    "<tr>" + 
+                        "<td>" + roundNumber(zx) + "</td>" + 
+                        "<td>" + roundNumber(zy) + "</td>" + 
+                        "<td>" + roundNumber(zz) + "</td>" + 
+                    "</tr>" + 
+                    "</table>";
+                $("#" + sectionId + " .angularInertia").append(table);
+            }
+            else {
+				var info = "<span>Moment of inertia:<b> " + roundNumber(xx) + " </b></span>";
+                $("#" + sectionId + " .angularInertia").append(info);  
+            }
 			
-			console.log(shapeName);
+			//$("#" + sectionId + " .computeInertia").hide();
+			
+			//console.log(shapeName);
 		//});
 		
 		$("#" + sectionId + " .shapeData").on('change textInput input', function () {
@@ -402,6 +417,10 @@ function multicollide_init() {
 					_setShapeAngularVelocityX(index, value);
 					calculateAngularVelocitySpeed(index, sectionId);
 				} else if(dataElement === "angularvelocityy"){
+					if(using2D){
+						console.log("ok");
+						//value = Math.PI / 6.0; //TODO why no work?
+					}
 					_setShapeAngularVelocityY(index, value);
 					calculateAngularVelocitySpeed(index, sectionId);
 				} else if(dataElement === "angularvelocityz"){
@@ -524,6 +543,55 @@ function multicollide_init() {
 			
 		//dialog.dialog("close");
 	 }
+     
+     var alreadyClicked = false;
+     var originalClickPos;
+     var prevClickPos;
+     var distanceOffsetFromOriginal = 10;
+     var vertices = [];
+     $("#polygonCanvas").mousedown(function(event){
+            var pos = getCursorPosition(event);
+            vertices.push(pos);
+            if(!alreadyClicked){
+                originalClickPos = pos;
+                prevClickPos = pos;
+                alreadyClicked = true;
+            }
+            else {
+                if(distance(pos, originalClickPos) < distanceOffsetFromOriginal){
+                    pos = originalClickPos; //close the shape
+                    $("#addCustomPolygonCanvasBtn").prop('disabled', false);
+                    vertices.pop();
+                }
+                var canvas = document.getElementById('polygonCanvas');
+                var context = canvas.getContext('2d');
+
+                context.beginPath();
+                context.moveTo(prevClickPos.x, prevClickPos.y);
+                context.lineTo(pos.x, pos.y);
+                context.stroke();
+                
+                prevClickPos = pos;
+            }
+    });
+    
+    $("#resetCustomPolygonCanvasBtn").click(function() {
+        alreadyClicked = false;
+        vertices = [];
+        $("#addCustomPolygonCanvasBtn").prop('disabled', true);
+        var canvas = document.getElementById('polygonCanvas');
+        canvas.width = canvas.width;
+    });
+    
+    $("#addCustomPolygonCanvasBtn").click(function() {
+       _createNewCustomPolygon();
+		for(var i=0; i<vertices.length; i++){
+			_addCustomPolygonVertex(vertices[i].x, vertices[i].y);
+		}
+		_doneCreatingCustomPolygon();
+		addShape(); 
+        
+    });
 	
 	$( ".cursorState" ).checkboxradio();
 	
@@ -653,6 +721,8 @@ function multicollide_init() {
 			
 			$("#run").attr("value", "Pause");
 			$("#reset").attr("value", "Stop");
+            
+            saveSetups();
 		}
 		else {
 			//Clicked pause/play:
@@ -660,6 +730,11 @@ function multicollide_init() {
 			$("#run").attr("value", ($("#run").attr("value") == "Play" ? "Pause" : "Play"));
 		}
 	 });
+     
+    $("#restoreBtn").button({'disabled': true});
+    $("#restoreBtn").click(function() {
+        restoreSetups();
+    });
 	 
 	 $("#addCustom").click(function() {
 		 var a1 = parseFloat($("#a1").val());
@@ -685,6 +760,8 @@ function multicollide_init() {
 			}
 			icoMode = false;
 			toggleIcoMode();
+            
+            $("#restoreBtn").button({'disabled': true});
 		}
 		else {
 			//Clicked stop:
@@ -697,6 +774,8 @@ function multicollide_init() {
 			_StopOnClick();
 			$("#run").attr("value", "Run");
 			$("#reset").attr("value", "Reset Scene");
+            
+            $("#restoreBtn").button({'disabled': false});
 		}
 	});
 	
@@ -714,6 +793,9 @@ function multicollide_init() {
 	
 	$("#sceneShapesHideBtn").click(function() {
 		$("#rightSidePanel").hide("slide", { direction: "right" }, 1000);
+                $('#constantControls').css({ 'margin-right': '95px' }).animate({
+                    'margin-right': '130px'
+                });   
 		$.when($("#sceneShapesShowBtnDiv").show("slide", { direction: "right" }, 1000)).then(function() {
 			sceneShapesOpen = false;
 			window.dispatchEvent(new Event('resize'));
@@ -772,6 +854,22 @@ function multicollide_init() {
 		  
 }
 
+function distance(pos1, pos2){
+    var dX = pos1.x - pos2.x;
+    var dY = pos1.y - pos2.y;
+    return Math.sqrt(dX*dX + dY*dY);
+}
+
+function getCursorPosition( event) {
+    // var rect = $("#polygonCanvas").getBoundingClientRect();
+    // var x = event.clientX - rect.left;
+    // var y = event.clientY - rect.top;
+    
+     var pos =  { x: event.offsetX, y: event.offsetY };
+    console.log("x: " + pos.x + " y: " + pos.y);
+    return pos;
+}
+
 function clearSelection() {
     if ( document.selection ) {
         document.selection.empty();
@@ -784,6 +882,132 @@ var jacobs_frame = false;
 var sceneShapesOpen = true;
 var icoMode = false;
 
+/*
+    When run is clicked, all properties of the shapes in the scene
+    will be stored as an object in this array.
+    object has the form  { position: vec3, 
+                           rotationAxis: vec3, 
+                           rotationAngle: float, 
+                           velocity: vec3,
+                           angVelAxis: vec3 }
+    It's assumed Scale & mass shouldn't change from when run is clicked 
+*/
+var initial_setups = [];
+
+/* Vector model */
+function Vec3(x, y, z) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+}
+
+/* Shape setup properties model */
+function ShapeSetup(position, rotationAxis, rotationAngle, velocity, angularVelocityAxis/*, angularVelocitySpeed*/){
+    this.position = position;
+    this.rotationAxis = rotationAxis;
+    this.rotationAngle = rotationAngle;
+    this.velocity = velocity;
+    this.angularVelocityAxis = angularVelocityAxis;
+    //this.angularVelocitySpeed = angularVelocitySpeed;
+}
+
+/* Called in the 'run' callback to store initial shape states */
+function saveSetups() {
+    
+    //Clear any existing setups:
+    initial_setups = [];
+    
+    var numShapes = _getNumShapes();
+    for(var index=0; index<numShapes; index++){
+        var shapeData = getShapeData(index);
+        var position = new Vec3(shapeData['positionx'], shapeData['positiony'], shapeData['positionz']);
+        var rotationAxis = new Vec3(shapeData['rotationAxisX'], shapeData['rotationAxisY'], shapeData['rotationAxisZ']);
+        var velocity = new Vec3(shapeData['velocityx'], shapeData['velocityy'], shapeData['velocityz']);
+        var angVelAxis = new Vec3(shapeData['angularvelocityx'], shapeData['angularvelocityy'], shapeData['angularvelocityz']);
+        
+        var setup = new ShapeSetup(position, rotationAxis, shapeData['rotationAngle'], velocity, angVelAxis);
+        initial_setups.push(setup);
+    }
+}
+
+/* Called by 'restore' button which is available after running a scene */
+function restoreSetups() {
+    for(var index=0; index<initial_setups.length; index++){
+        var setup = initial_setups[index];
+        //console.log(setup);
+        setShapePosition(index, setup.position);
+        setShapeVelocity(index, setup.velocity);
+        setShapeRotationAxis(index, setup.rotationAxis);
+        _setShapeRotationAngle(index, setup.rotationAngle);
+        setShapeAngularVelocityAxis(index, setup.angularVelocityAxis);
+        //_setShapeAngularVelocitySpeed(index, setup.angularVelocitySpeed);
+    }
+}
+
+/* Wrapper function for setting a shapes position, 
+    all components at once (position is a Vec3) */
+function setShapePosition(index, position){
+    if(!jacobs_frame){
+        flipVecToOpenGLFrame(position);
+    }
+    _setShapePositionX(index, position.x);
+    _setShapePositionY(index, position.y);
+    _setShapePositionZ(index, position.z);
+}
+
+/* Wrapper function for setting a shapes velocity, 
+    all components at once (velocity is a Vec3) */
+function setShapeVelocity(index, velocity){
+    if(!jacobs_frame){
+        flipVecToOpenGLFrame(velocity);
+    }
+    _setShapeVelocityX(index, velocity.x);
+    _setShapeVelocityY(index, velocity.y);
+    _setShapeVelocityZ(index, velocity.z);
+}
+
+/* Wrapper function for setting a shapes rotation axis, 
+    all components at once (rotationAxis is a Vec3) */
+function setShapeRotationAxis(index, rotationAxis){
+    if(!jacobs_frame){
+        flipVecToOpenGLFrame(rotationAxis);
+    }
+    _setShapeRotationAxisX(index, rotationAxis.x);
+    _setShapeRotationAxisY(index, rotationAxis.y);
+    _setShapeRotationAxisZ(index, rotationAxis.z);
+}
+
+/* Wrapper function for setting a shapes angular velocity axis, 
+    all components at once (angularVelocityAxis is a Vec3) */
+function setShapeAngularVelocityAxis(index, angularVelocityAxis){
+    if(!jacobs_frame){
+        flipVecToOpenGLFrame(angularVelocityAxis);
+    }
+    _setShapeAngularVelocityX(index, angularVelocityAxis.x);
+    _setShapeAngularVelocityY(index, angularVelocityAxis.y);
+    _setShapeAngularVelocityZ(index, angularVelocityAxis.z);
+
+}
+
+/* Used to convert a vector from my frame, opengl frame,
+   to the paper's frame */
+function flipVecToPaperFrame(vec){
+    //vec.x = vec.x;
+    var temp = vec.z;
+    vec.z = vec.y;
+    vec.y = -1.0 * temp;
+}
+
+/* Used to convert a vector from the paper's frame, 
+   to opengl frame, jacob's frame */
+function flipVecToOpenGLFrame(vec){
+    //vec.x = vec.x;
+    var temp = vec.z;
+    vec.z =  -1.0 * vec.y;
+    vec.y = temp;
+}
+
+/* Runs every browser animation frame */
 function multicollide_update() {
 	if(_isNewData()){
 	  updateShapeData();
@@ -934,11 +1158,15 @@ function multicollide_update() {
  
  function updateShapeData() {
 	$("#shapesAccordion div.tabs").each(function(index, divElement) {
-		//console.log("Shape index: " + index);
 		var shapeData = getShapeData(index);
+        
+        var shapeName = Pointer_stringify(_getShapeName(index));
+		var sectionId = "shapeAccordion" + shapeName;
+        calculateAngularVelocitySpeed(index, sectionId);
+        calculateVelocitySpeed(index, sectionId);
+        
 		$(divElement).find("input:not(:button)").each(function() {
 			var dataElement = $(this).attr("class").split(" ")[0];
-			//console.log(dataElement);
 			$(this).spinner("value", shapeData[dataElement]);
 		});
 	});
@@ -965,7 +1193,7 @@ function multicollide_update() {
 			
 		// });
 		
-		$("#impulseContinueBtn").click();
+		$(".impulseContinueBtn").click();
 	}
     else {
 		// console.log("window ht: " + window.innerHeight);
@@ -1062,6 +1290,10 @@ function multicollide_update() {
 		var html = "<h4 id='impactVisualizations'>A Collision Occurred</h4>" + 
 			"<div id='graphsContainer' height='520px'>";
 			
+            html += "<br><div style='text-align: center;' class='centered-div'>" +
+                "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Continue'>" +
+				"<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Restart'></div><br>";
+                
 			if(showImpulseGraph){
 				html += "<p class='graphLabel'>Impulse Accumulation</p>" + 
 				"<div id='graph1'  height='230px' class='centered-div'></div><br><br>";
@@ -1116,25 +1348,25 @@ function multicollide_update() {
 				"<tr><td class='postImpactCell'>End of Sliding</td><td class='postImpactCell'>" + endOfSliding + "</td></tr>" +
 				"<tr><td class='postImpactCell'>End of Compression</td><td class='postImpactCell'>" + endOfCompression + "</td></tr></table>";
 				
-				html += "<br><br><div class='centered-div'><input type='button' class='ui-button ui-widget ui-corner-all' id='impulseContinueBtn' value='Continue'>" +
-				"<input type='button' class='ui-button ui-widget ui-corner-all' id='impulseRestartBtn' value='Restart'></div>" +
-			"</div>";
+				html += "<br><br><div style='text-align: center;' class='centered-div'>" +
+                    "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Continue'>" +
+                    "<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Restart'></div><br><br>" +
+                "</div>";
 		
 		var accord = $('#shapesAccordion');
 		accord.append(html);
 		accord.accordion("refresh");
-		$(".svg-containger").attr('margin', '0 auto');
 		// $("#rightSidePanel").attr('height', 400);
 		// accord.attr('height', 400);
 		
-		$("#impulseContinueBtn").click(function() {
+		$(".impulseContinueBtn").click(function() {
 			stopVisualizations();
 			_continueImpulseOnClick();
 			$("#graphsContainer").remove();
 			$("#impactVisualizations").remove();
 		});
 		
-		$("#impulseRestartBtn").click(function() {
+		$(".impulseRestartBtn").click(function() {
 			stopVisualizations();
 			if(showImpulseGraph) {
 				$("#graph1").empty();
@@ -1207,6 +1439,9 @@ function multicollide_update() {
  
  function showSceneShapes(callback) {
 	$.when($("#sceneShapesShowBtnDiv").hide("slide", { direction: "right" }, 700)).then(function() {
+        $('#constantControls').css({ 'margin-right': '130px' }).animate({
+                    'margin-right': '95px'
+                });  
 		sceneShapesOpen = true;
 		
 		$("#rightSidePanel").show();
@@ -1273,8 +1508,15 @@ function multicollide_update() {
  
  function calculateAngularVelocitySpeed(index, sectionId) {
 	var speed = _getShapeAngularVelocitySpeed(index);
-	console.log(speed);
-	 $('#' + sectionId + '.angularvelocityspeed').text(speed);
+	$('#' + sectionId + ' .angularvelocityspeed').text(roundNumber(speed));
+ }
+ 
+ function calculateVelocitySpeed(index, sectionId) {
+	var x = _getShapeVelocityX(index);
+    var y = _getShapeVelocityY(index);
+    var z = _getShapeVelocityZ(index);
+    var speed = Math.sqrt(x*x + y*y + z*z);
+	$('#' + sectionId + ' .velocityspeed').text(roundNumber(speed));
  }
  
  function calculateNormalizedRotAxis(index, sectionId) {
@@ -1467,15 +1709,33 @@ function multicollide_update() {
  }
  
  function toggleIcoMode() {
-	//$(".icoDisable").prop("disabled",icoMode);
 	
 	$(".icoDisable").button({
 		disabled: icoMode
 	});
-	
-	// $(".icoDisable").hover(function(){
-		
-	// });
+                
+    if(icoMode) {
+        var titleLink = $("<a>").attr('href', 'http://computationalnonlinear.asmedigitalcollection.asme.org/article.aspx?articleid=2593224')
+                                .attr('target', '_blank')
+                                .html("Yan-Bin Jia and Feifei Wang. Analysis and computation of two body impact in three dimensions. " +
+                                      "ASME Journal of Computational and Nonlinear Dynamics, vol. 12, no. 4, 2017. ")
+                                .css('margin', '15px')
+                                .css('display', 'block');
+                    
+        var span = $("<span>").html("A complete description of the impact configuration can be found in the following reference: <br><br>")
+                              .css('margin', '15px')
+                              .css('display', 'block');
+        
+        var header = "<h4 id='shapeHeaderIcoInfo'>Collision Details</h4>"
+
+        var div = $("<div>").attr('id', 'header3');
+        div.append(span);
+        div.append(titleLink);
+        
+        $('#shapesAccordion').append(header);
+        $('#shapesAccordion').append(div);
+        $('#shapesAccordion').accordion("refresh");
+    }
  }
  
  function initSettings() {
@@ -1505,8 +1765,8 @@ function multicollide_update() {
 	checkIfShouldShowGraphs();
 	
 	//mu & e:
-	$("#friction").val(_getShapeFriction());
-	$("#restitution").val(_getShapeRestitution());
+	$("#friction").val(roundNumber(_getShapeFriction()));
+	$("#restitution").val(roundNumber(_getShapeRestitution()));
  }
  
  function roundNumber(num){
