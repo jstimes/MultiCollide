@@ -721,6 +721,8 @@ function multicollide_init() {
 			
 			$("#run").attr("value", "Pause");
 			$("#reset").attr("value", "Stop");
+            
+            saveSetups();
 		}
 		else {
 			//Clicked pause/play:
@@ -728,6 +730,11 @@ function multicollide_init() {
 			$("#run").attr("value", ($("#run").attr("value") == "Play" ? "Pause" : "Play"));
 		}
 	 });
+     
+    $("#restoreBtn").button({'disabled': true});
+    $("#restoreBtn").click(function() {
+        restoreSetups();
+    });
 	 
 	 $("#addCustom").click(function() {
 		 var a1 = parseFloat($("#a1").val());
@@ -753,6 +760,8 @@ function multicollide_init() {
 			}
 			icoMode = false;
 			toggleIcoMode();
+            
+            $("#restoreBtn").button({'disabled': true});
 		}
 		else {
 			//Clicked stop:
@@ -765,6 +774,8 @@ function multicollide_init() {
 			_StopOnClick();
 			$("#run").attr("value", "Run");
 			$("#reset").attr("value", "Reset Scene");
+            
+            $("#restoreBtn").button({'disabled': false});
 		}
 	});
 	
@@ -871,6 +882,132 @@ var jacobs_frame = false;
 var sceneShapesOpen = true;
 var icoMode = false;
 
+/*
+    When run is clicked, all properties of the shapes in the scene
+    will be stored as an object in this array.
+    object has the form  { position: vec3, 
+                           rotationAxis: vec3, 
+                           rotationAngle: float, 
+                           velocity: vec3,
+                           angVelAxis: vec3 }
+    It's assumed Scale & mass shouldn't change from when run is clicked 
+*/
+var initial_setups = [];
+
+/* Vector model */
+function Vec3(x, y, z) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+}
+
+/* Shape setup properties model */
+function ShapeSetup(position, rotationAxis, rotationAngle, velocity, angularVelocityAxis/*, angularVelocitySpeed*/){
+    this.position = position;
+    this.rotationAxis = rotationAxis;
+    this.rotationAngle = rotationAngle;
+    this.velocity = velocity;
+    this.angularVelocityAxis = angularVelocityAxis;
+    //this.angularVelocitySpeed = angularVelocitySpeed;
+}
+
+/* Called in the 'run' callback to store initial shape states */
+function saveSetups() {
+    
+    //Clear any existing setups:
+    initial_setups = [];
+    
+    var numShapes = _getNumShapes();
+    for(var index=0; index<numShapes; index++){
+        var shapeData = getShapeData(index);
+        var position = new Vec3(shapeData['positionx'], shapeData['positiony'], shapeData['positionz']);
+        var rotationAxis = new Vec3(shapeData['rotationAxisX'], shapeData['rotationAxisY'], shapeData['rotationAxisZ']);
+        var velocity = new Vec3(shapeData['velocityx'], shapeData['velocityy'], shapeData['velocityz']);
+        var angVelAxis = new Vec3(shapeData['angularvelocityx'], shapeData['angularvelocityy'], shapeData['angularvelocityz']);
+        
+        var setup = new ShapeSetup(position, rotationAxis, shapeData['rotationAngle'], velocity, angVelAxis);
+        initial_setups.push(setup);
+    }
+}
+
+/* Called by 'restore' button which is available after running a scene */
+function restoreSetups() {
+    for(var index=0; index<initial_setups.length; index++){
+        var setup = initial_setups[index];
+        //console.log(setup);
+        setShapePosition(index, setup.position);
+        setShapeVelocity(index, setup.velocity);
+        setShapeRotationAxis(index, setup.rotationAxis);
+        _setShapeRotationAngle(index, setup.rotationAngle);
+        setShapeAngularVelocityAxis(index, setup.angularVelocityAxis);
+        //_setShapeAngularVelocitySpeed(index, setup.angularVelocitySpeed);
+    }
+}
+
+/* Wrapper function for setting a shapes position, 
+    all components at once (position is a Vec3) */
+function setShapePosition(index, position){
+    if(!jacobs_frame){
+        flipVecToOpenGLFrame(position);
+    }
+    _setShapePositionX(index, position.x);
+    _setShapePositionY(index, position.y);
+    _setShapePositionZ(index, position.z);
+}
+
+/* Wrapper function for setting a shapes velocity, 
+    all components at once (velocity is a Vec3) */
+function setShapeVelocity(index, velocity){
+    if(!jacobs_frame){
+        flipVecToOpenGLFrame(velocity);
+    }
+    _setShapeVelocityX(index, velocity.x);
+    _setShapeVelocityY(index, velocity.y);
+    _setShapeVelocityZ(index, velocity.z);
+}
+
+/* Wrapper function for setting a shapes rotation axis, 
+    all components at once (rotationAxis is a Vec3) */
+function setShapeRotationAxis(index, rotationAxis){
+    if(!jacobs_frame){
+        flipVecToOpenGLFrame(rotationAxis);
+    }
+    _setShapeRotationAxisX(index, rotationAxis.x);
+    _setShapeRotationAxisY(index, rotationAxis.y);
+    _setShapeRotationAxisZ(index, rotationAxis.z);
+}
+
+/* Wrapper function for setting a shapes angular velocity axis, 
+    all components at once (angularVelocityAxis is a Vec3) */
+function setShapeAngularVelocityAxis(index, angularVelocityAxis){
+    if(!jacobs_frame){
+        flipVecToOpenGLFrame(angularVelocityAxis);
+    }
+    _setShapeAngularVelocityX(index, angularVelocityAxis.x);
+    _setShapeAngularVelocityY(index, angularVelocityAxis.y);
+    _setShapeAngularVelocityZ(index, angularVelocityAxis.z);
+
+}
+
+/* Used to convert a vector from my frame, opengl frame,
+   to the paper's frame */
+function flipVecToPaperFrame(vec){
+    //vec.x = vec.x;
+    var temp = vec.z;
+    vec.z = vec.y;
+    vec.y = -1.0 * temp;
+}
+
+/* Used to convert a vector from the paper's frame, 
+   to opengl frame, jacob's frame */
+function flipVecToOpenGLFrame(vec){
+    //vec.x = vec.x;
+    var temp = vec.z;
+    vec.z =  -1.0 * vec.y;
+    vec.y = temp;
+}
+
+/* Runs every browser animation frame */
 function multicollide_update() {
 	if(_isNewData()){
 	  updateShapeData();
