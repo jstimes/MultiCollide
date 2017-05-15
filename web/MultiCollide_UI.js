@@ -950,7 +950,7 @@ function restoreSetups() {
 /* Wrapper function for setting a shapes position, 
     all components at once (position is a Vec3) */
 function setShapePosition(index, position){
-    if(!jacobs_frame){
+    if(!jacobs_frame && !using2D){
         flipVecToOpenGLFrame(position);
     }
     _setShapePositionX(index, position.x);
@@ -961,7 +961,7 @@ function setShapePosition(index, position){
 /* Wrapper function for setting a shapes velocity, 
     all components at once (velocity is a Vec3) */
 function setShapeVelocity(index, velocity){
-    if(!jacobs_frame){
+    if(!jacobs_frame && !using2D){
         flipVecToOpenGLFrame(velocity);
     }
     _setShapeVelocityX(index, velocity.x);
@@ -972,7 +972,7 @@ function setShapeVelocity(index, velocity){
 /* Wrapper function for setting a shapes rotation axis, 
     all components at once (rotationAxis is a Vec3) */
 function setShapeRotationAxis(index, rotationAxis){
-    if(!jacobs_frame){
+    if(!jacobs_frame && !using2D){
         flipVecToOpenGLFrame(rotationAxis);
     }
     _setShapeRotationAxisX(index, rotationAxis.x);
@@ -1297,8 +1297,8 @@ function multicollide_update() {
 			"<div id='graphsContainer' height='520px'>";
 			
             html += "<br><div style='text-align: center;' class='centered-div'>" +
-                "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Continue'>" +
-				"<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Restart'></div><br>";
+                "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Resume Animation'>" +
+				"<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Replot'></div><br>";
                 
 			if(showImpulseGraph){
 				html += "<p class='graphLabel'>Impulse Accumulation</p>" + 
