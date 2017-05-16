@@ -694,7 +694,7 @@ function multicollide_init() {
 				var fileNamePtr = allocate(intArrayFromString(fileName), 'i8', ALLOC_NORMAL);
 				var fileContentPtr = allocate(intArrayFromString(this.result), 'i8', ALLOC_NORMAL);
 				
-				_uploadMesh(fileNamePtr, fileContentPtr); 
+				_AddObjMesh(fileNamePtr, fileContentPtr); 
 				addShape();
 				
 				_free(fileContentPtr);
