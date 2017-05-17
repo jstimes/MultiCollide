@@ -694,7 +694,7 @@ function multicollide_init() {
 				var fileNamePtr = allocate(intArrayFromString(fileName), 'i8', ALLOC_NORMAL);
 				var fileContentPtr = allocate(intArrayFromString(this.result), 'i8', ALLOC_NORMAL);
 				
-				_uploadMesh(fileNamePtr, fileContentPtr); 
+				_AddObjMesh(fileNamePtr, fileContentPtr); 
 				addShape();
 				
 				_free(fileContentPtr);
@@ -711,6 +711,7 @@ function multicollide_init() {
 	});
 	
 	$('#run').click(function() {
+        saveSetups();
 		_RunOnClick();
 		
 		if(isSettingUpScene){
@@ -719,8 +720,6 @@ function multicollide_init() {
 			
 			$("#run").attr("value", "Pause");
 			$("#reset").attr("value", "Stop");
-            
-            saveSetups();
 		}
 		else {
 			//Clicked pause/play:
@@ -904,6 +903,10 @@ function Vec3(x, y, z) {
     this.z = z;
 }
 
+Vec3.prototype.copy = function() {
+    return new Vec3(this.x, this.y, this.z);
+}
+
 /* Shape setup properties model */
 function ShapeSetup(position, rotationAxis, rotationAngle, velocity, angularVelocityAxis/*, angularVelocitySpeed*/){
     this.position = position;
@@ -911,7 +914,6 @@ function ShapeSetup(position, rotationAxis, rotationAngle, velocity, angularVelo
     this.rotationAngle = rotationAngle;
     this.velocity = velocity;
     this.angularVelocityAxis = angularVelocityAxis;
-    //this.angularVelocitySpeed = angularVelocitySpeed;
 }
 
 /* Called in the 'run' callback to store initial shape states */
@@ -943,52 +945,59 @@ function restoreSetups() {
         setShapeRotationAxis(index, setup.rotationAxis);
         _setShapeRotationAngle(index, setup.rotationAngle);
         setShapeAngularVelocityAxis(index, setup.angularVelocityAxis);
-        //_setShapeAngularVelocitySpeed(index, setup.angularVelocitySpeed);
     }
 }
 
 /* Wrapper function for setting a shapes position, 
     all components at once (position is a Vec3) */
 function setShapePosition(index, position){
-    if(!jacobs_frame){
-        flipVecToOpenGLFrame(position);
+    var pos = position.copy();
+    
+    if(!jacobs_frame && !using2D){
+        pos = flipVecToOpenGLFrame(pos);
     }
-    _setShapePositionX(index, position.x);
-    _setShapePositionY(index, position.y);
-    _setShapePositionZ(index, position.z);
+    _setShapePositionX(index, pos.x);
+    _setShapePositionY(index, pos.y);
+    _setShapePositionZ(index, pos.z);
 }
 
 /* Wrapper function for setting a shapes velocity, 
     all components at once (velocity is a Vec3) */
 function setShapeVelocity(index, velocity){
-    if(!jacobs_frame){
-        flipVecToOpenGLFrame(velocity);
+    var vel = velocity.copy();
+    
+    if(!jacobs_frame && !using2D){
+        vel = flipVecToOpenGLFrame(vel);
     }
-    _setShapeVelocityX(index, velocity.x);
-    _setShapeVelocityY(index, velocity.y);
-    _setShapeVelocityZ(index, velocity.z);
+    _setShapeVelocityX(index, vel.x);
+    _setShapeVelocityY(index, vel.y);
+    _setShapeVelocityZ(index, vel.z);
 }
 
 /* Wrapper function for setting a shapes rotation axis, 
     all components at once (rotationAxis is a Vec3) */
 function setShapeRotationAxis(index, rotationAxis){
-    if(!jacobs_frame){
-        flipVecToOpenGLFrame(rotationAxis);
+    var rotAxis = rotationAxis.copy();
+    
+    if(!jacobs_frame && !using2D){
+        rotAxis = flipVecToOpenGLFrame(rotAxis);
     }
-    _setShapeRotationAxisX(index, rotationAxis.x);
-    _setShapeRotationAxisY(index, rotationAxis.y);
-    _setShapeRotationAxisZ(index, rotationAxis.z);
+    _setShapeRotationAxisX(index, rotAxis.x);
+    _setShapeRotationAxisY(index, rotAxis.y);
+    _setShapeRotationAxisZ(index, rotAxis.z);
 }
 
 /* Wrapper function for setting a shapes angular velocity axis, 
     all components at once (angularVelocityAxis is a Vec3) */
 function setShapeAngularVelocityAxis(index, angularVelocityAxis){
+    var angVel = angularVelocityAxis.copy();
+    
     if(!jacobs_frame){
-        flipVecToOpenGLFrame(angularVelocityAxis);
+        angVel =flipVecToOpenGLFrame(angVel);
     }
-    _setShapeAngularVelocityX(index, angularVelocityAxis.x);
-    _setShapeAngularVelocityY(index, angularVelocityAxis.y);
-    _setShapeAngularVelocityZ(index, angularVelocityAxis.z);
+    _setShapeAngularVelocityX(index, angVel.x);
+    _setShapeAngularVelocityY(index, angVel.y);
+    _setShapeAngularVelocityZ(index, angVel.z);
 
 }
 
@@ -996,18 +1005,22 @@ function setShapeAngularVelocityAxis(index, angularVelocityAxis){
    to the paper's frame */
 function flipVecToPaperFrame(vec){
     //vec.x = vec.x;
-    var temp = vec.z;
-    vec.z = vec.y;
-    vec.y = -1.0 * temp;
+    // var temp = vec.z;
+    // vec.z = vec.y;
+    // vec.y = -1.0 * temp;
+    
+    return new Vec3(vec.x, -1.0 * vec.z, vec.y);
 }
 
 /* Used to convert a vector from the paper's frame, 
    to opengl frame, jacob's frame */
 function flipVecToOpenGLFrame(vec){
     //vec.x = vec.x;
-    var temp = vec.z;
-    vec.z =  -1.0 * vec.y;
-    vec.y = temp;
+    // var temp = vec.z;
+    // vec.z =  -1.0 * vec.y;
+    // vec.y = temp;
+    
+    return new Vec3(vec.x, vec.z, -1.0 * vec.y);
 }
 
 /* Runs every browser animation frame */
@@ -1297,8 +1310,8 @@ function multicollide_update() {
 			"<div id='graphsContainer' height='520px'>";
 			
             html += "<br><div style='text-align: center;' class='centered-div'>" +
-                "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Continue'>" +
-				"<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Restart'></div><br>";
+                "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Resume Animation'>" +
+				"<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Replot'></div><br>";
                 
 			if(showImpulseGraph){
 				html += "<p class='graphLabel'>Impulse Accumulation</p>" + 
