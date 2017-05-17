@@ -10,12 +10,14 @@ public:
 	virtual void ComputeInertia() override {
 		//h = w = d
 
-		angularInertia = glm::mat3();
+		glm::mat3 angular_inertia;
 
 		float val = (1.0f / 12.0f) * mass * 2.0f;
-		angularInertia[0][0] = val;
-		angularInertia[1][1] = val;
-		angularInertia[2][2] = val;
+		angular_inertia[0][0] = val;
+		angular_inertia[1][1] = val;
+		angular_inertia[2][2] = val;
+
+		this->setAngularInertia(angular_inertia);
 	}
 
 	virtual glm::vec3 GetNormalAtPoint(ParamPoint &pt) override {

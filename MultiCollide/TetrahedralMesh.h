@@ -255,7 +255,7 @@ public:
 			computeTetrahedronAngularInertia(*it, this->centroid);
 			meshInertia += it->angularInertia;
 		}
-		this->angularInertia = meshInertia;
+		this->setAngularInertia(meshInertia);
 	}
 
 	void Translate(glm::vec3 trans) {

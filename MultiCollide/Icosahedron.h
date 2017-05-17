@@ -198,9 +198,11 @@ public:
 	}
 
 	virtual void ComputeInertia() override {
-		angularInertia = glm::mat3();
+		glm::mat3 angular_inertia;
 		//angularInertia[0][0] = angularInertia[1][0] = angularInertia[1][1] = angularInertia[2][0] = angularInertia[2][1] = angularInertia[2][2] = .0671673f;
-		angularInertia[0][0] = angularInertia[1][1] = angularInertia[2][2] = .0671673f;
+		angular_inertia[0][0] = angular_inertia[1][1] = angular_inertia[2][2] = .0671673f;
+
+		this->setAngularInertia(angular_inertia);
 	}
 
 	virtual void InitVAOandVBO(Shader &shader) override {
@@ -303,10 +305,13 @@ public:
 	}
 
 	virtual void ComputeInertia() override {
-		angularInertia = glm::mat3();
-		angularInertia[0][0] = .027135f;
-		angularInertia[1][1] = .017239f;
-		angularInertia[2][2] = .022813f;
+		glm::mat3 angular_inertia;
+
+		angular_inertia[0][0] = .027135f;
+		angular_inertia[1][1] = .017239f;
+		angular_inertia[2][2] = .022813f;
+
+		this->setAngularInertia(angular_inertia);
 	}
 
 	virtual void InitVAOandVBO(Shader &shader) override {

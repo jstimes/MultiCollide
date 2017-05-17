@@ -3,8 +3,8 @@
 #include <fstream>
 #include <vector>
 
+
 #include <emscripten.h>
-//#include "Tests2D.h"
 
 // GLEW
 // GLFW
@@ -46,11 +46,14 @@
 
 #include "CollisionDetector.h"
 
+#include "tiny_obj_loader.h"
+#include "ObjMesh.h"
+
 const bool USING_EMSCRIPTEN = true;
 
 bool usingClosedFormImpact = false;
 bool using2DShapes = false;
-float frictionCoefficient = 0.05f;
+float frictionCoefficient = 0.5f;
 float restitutionCoefficient = 1.0f;
 
 
@@ -176,8 +179,8 @@ bool closeProgram = false;
 //  are animated towards each other and hit with the preset velocities at configured contact point
 bool isFreeFly = true;
 
-bool plotPrincipalFrame = true;
-bool plotRotationAxis = false;
+bool plotPrincipalFrame = false;
+bool plotRotationAxis = true;
 
 
 float contactAccuracy = 0.001f;
@@ -196,6 +199,7 @@ GLView *pauseBtn;
 GLView *stopBtn;
 
 Shader shapeShader;
+Shader colorShapeShader;
 GLFWwindow* window;
 std::vector<Shape*> shapes;
 Shape *pickedShape;
@@ -298,16 +302,16 @@ extern "C" {
 
 	//UI will query this each frame, stopping and resetting the UI if true
 	bool shapeOutOfScene = false;
-	bool
+		bool
 #ifdef EMSCRIPTEN_KEEPALIVE
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		isShapeOutOfScene() {
-		bool toReturn = shapeOutOfScene;
-		if(shapeOutOfScene){
-			shapeOutOfScene = false; // Do this so once  UI queries this and find it's true, it won't still be true after a reset or something
+		bool to_return = shapeOutOfScene;
+		if (shapeOutOfScene) {
+			shapeOutOfScene = false;
 		}
-		return toReturn;
+		return to_return;
 	}
 
 	void 
@@ -545,7 +549,8 @@ extern "C" {
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		getShapeAngularInertiaXX(unsigned int shapeIndex) {
-		return shapes[shapeIndex]->angularInertia[0][0];
+		glm::mat3 ang_inertia = shapes[shapeIndex]->getAngularInertia();
+		return ang_inertia[0][0];
 	}
 
 	float
@@ -553,7 +558,8 @@ extern "C" {
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		getShapeAngularInertiaXY(unsigned int shapeIndex) {
-		return shapes[shapeIndex]->angularInertia[0][1];
+		glm::mat3 ang_inertia = shapes[shapeIndex]->getAngularInertia();
+		return ang_inertia[0][1];
 	}
 
 	float
@@ -561,7 +567,8 @@ extern "C" {
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		getShapeAngularInertiaXZ(unsigned int shapeIndex) {
-		return shapes[shapeIndex]->angularInertia[0][2];
+		glm::mat3 ang_inertia = shapes[shapeIndex]->getAngularInertia();
+		return ang_inertia[0][2];
 	}
 
 	float
@@ -569,7 +576,8 @@ extern "C" {
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		getShapeAngularInertiaYX(unsigned int shapeIndex) {
-		return shapes[shapeIndex]->angularInertia[1][0];
+		glm::mat3 ang_inertia = shapes[shapeIndex]->getAngularInertia();
+		return ang_inertia[1][0];
 	}
 
 	float
@@ -577,7 +585,8 @@ extern "C" {
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		getShapeAngularInertiaYY(unsigned int shapeIndex) {
-		return shapes[shapeIndex]->angularInertia[1][1];
+		glm::mat3 ang_inertia = shapes[shapeIndex]->getAngularInertia();
+		return ang_inertia[1][1];
 	}
 
 	float
@@ -585,7 +594,8 @@ extern "C" {
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		getShapeAngularInertiaYZ(unsigned int shapeIndex) {
-		return shapes[shapeIndex]->angularInertia[1][2];
+		glm::mat3 ang_inertia = shapes[shapeIndex]->getAngularInertia();
+		return ang_inertia[1][2];
 	}
 
 	float
@@ -593,7 +603,8 @@ extern "C" {
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		getShapeAngularInertiaZX(unsigned int shapeIndex) {
-		return shapes[shapeIndex]->angularInertia[2][0];
+		glm::mat3 ang_inertia = shapes[shapeIndex]->getAngularInertia();
+		return ang_inertia[2][0];
 	}
 
 	float
@@ -601,7 +612,8 @@ extern "C" {
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		getShapeAngularInertiaZY(unsigned int shapeIndex) {
-		return shapes[shapeIndex]->angularInertia[2][1];
+		glm::mat3 ang_inertia = shapes[shapeIndex]->getAngularInertia();
+		return ang_inertia[2][1];
 	}
 
 	float
@@ -609,7 +621,8 @@ extern "C" {
 		EMSCRIPTEN_KEEPALIVE
 #endif
 		getShapeAngularInertiaZZ(unsigned int shapeIndex) {
-		return shapes[shapeIndex]->angularInertia[2][2];
+		glm::mat3 ang_inertia = shapes[shapeIndex]->getAngularInertia();
+		return ang_inertia[2][2];
 	}
 
 	void
@@ -805,6 +818,16 @@ extern "C" {
 	}
 
 	void
+#ifdef EMPSCRIPTEN_KEEPALIVE
+		EMSCRIPTEN_KEEPALIVE
+#endif
+		AddObjMesh(char *file_name, char *file_contents) {
+		ObjMesh* mesh = new ObjMesh(file_contents);
+		mesh->name = std::string(file_name);
+		AddShape(mesh);
+	}
+
+	void
 #ifdef EMSCRIPTEN_KEEPALIVE
 		EMSCRIPTEN_KEEPALIVE
 #endif
@@ -917,14 +940,15 @@ extern "C" {
 			return;
 		}
 
+		int numShapes = getNumShapes();
 		if (!isFreeFly) {
-			int numShapes = getNumShapes();
-			/*for (int i = 0; i < numShapes; i++) {
-				shapes[i]->centroid = shapes[i]->translation = shapes[i]->centroid + -shapes[i]->curVelocity;
-			}*/
-
 			for (int i = 0; i < numShapes; i++) {
 				shapes[i]->BackwardsIntegrate();
+			}
+		}
+		else {
+			for (int i = 0; i < numShapes; i++) {
+				shapes[i]->time = 0.0f;
 			}
 		}
 
@@ -935,11 +959,6 @@ extern "C" {
 			pickedShape->objectColor = pickedShape->defaultColor;
 		}
 		pickedShape = nullptr;
-
-		//HidePanels();
-
-		//views.push_back(pauseBtn);
-		//views.push_back(stopBtn);
 	}
 
 	void
@@ -1920,21 +1939,9 @@ void mainLoop() {
 
 	lastFrame = currentFrame;
 
-	//if (impulseMode) {
-		//renderImpulseGraph();
-		//TODO focus camera on shapes in contact
-		//return;
-	//}
-
 	if (!setup) {
-		if (!go) {
-			for (unsigned int i = 0; i < shapes.size(); i++) {
-				shapes[i]->time = 0.0f;
-			}
-			go = true;
-		}
 
-
+		//To be used in calculating if each shape is in scene
 		glm::mat4 PV = projection * camera.view;
 
 		//Update position of each shape:
@@ -1955,11 +1962,13 @@ void mainLoop() {
 				shapes[i]->translation += shapes[i]->curVelocity * deltaTime;
 			}
 
-			if (!ShapeUtils::checkIfInFrustrum(PV, shapes[i]->translation)) {
-				//std::cout << "Shape went out of scene" << std::endl;
+			if (shapes[i]->time >= 0.0f && !ShapeUtils::checkIfInFrustrum(PV, shapes[i]->translation)) {
+				std::cout << "Shape went out of scene" << std::endl;
 				shapeOutOfScene = true; //UI will query this each frame, stopping and resetting the UI if true
+				if (!USING_EMSCRIPTEN) {
+					StopOnClick();
+				}
 			}
-
 			//shapes[i]->translation = shapes[i]->centroid + (shapes[i]->curVelocity * shapes[i]->time) + glm::vec3(0.0f, .5f * gravity * shapes[i]->time * shapes[i]->time, 0.0f);
 			
 		}
@@ -2940,8 +2949,10 @@ void Collision(Shape &s1, ParamPoint &contactPt1, Shape &s2, ParamPoint &contact
 		glm::vec3 r2 = glm::normalize(s1.translation - s2.translation);
 		float angVel1 = MathUtils::magnitude(s1.angularVelocityAxis);
 		float angVel2 = MathUtils::magnitude(s2.angularVelocityAxis);
+		glm::mat3 s1_ang_inertia = s1.getAngularInertia();
+		glm::mat3 s2_ang_inertia = s2.getAngularInertia();
 		Impact2D::Impact2DOutput output =
-			i2.impact(s1.mass, s2.mass, s1.angularInertia[0][0], s2.angularInertia[0][0],
+			i2.impact(s1.mass, s2.mass, s1_ang_inertia[0][0], s2_ang_inertia[0][0],
 				/*s1.*/frictionCoefficient, /*s1.*/ restitutionCoefficient,
 				r1, r2,
 				s1.curVelocity, s2.curVelocity,
@@ -2967,9 +2978,11 @@ void Collision(Shape &s1, ParamPoint &contactPt1, Shape &s2, ParamPoint &contact
 	glm::mat3 R1 = glm::mat3(s1Rot);
 	glm::mat3 R2 = glm::mat3(s2Rot);
 
-	//TODO compute angular inertias and use as Q
 	glm::mat3 RTAN, Q1, Q2;
 	glm::vec3 r1, r2, v1, v2, w1, w2;
+
+	Q1 = s1.getAngularInertia();
+	Q2 = s2.getAngularInertia();
 
 	//Collision normal should be going from s2 into s1
 	glm::vec3 normLocal = s2.GetNormalAtPoint(contactPt2);
@@ -3009,12 +3022,12 @@ void Collision(Shape &s1, ParamPoint &contactPt1, Shape &s2, ParamPoint &contact
 
 		icoHit = true;
 		if (s1.name.find("tetra") != s1.name.npos) {
-			Q2 = s1.angularInertia;
-			Q1 = s2.angularInertia;
+			Q2 = s1.getAngularInertia();
+			Q1 = s2.getAngularInertia();
 		}
 		else {
-			Q2 = s2.angularInertia;
-			Q1 = s1.angularInertia;
+			Q2 = s2.getAngularInertia();
+			Q1 = s1.getAngularInertia();
 		}
 
 		//RTAN = glm::mat3();
@@ -3100,7 +3113,7 @@ void Collision(Shape &s1, ParamPoint &contactPt1, Shape &s2, ParamPoint &contact
 		contactShape2 = shapes[j];
 
 		contactShape1->objectColor = shapes[i]->contactColor;
-		contactShape2->objectColor = shapes[j]->contactColor;
+		contactShape2->objectColor = shapes[j]->contactColor2;
 
 
 		prevCameraPosX = camera.cameraPos.x;
@@ -3198,9 +3211,15 @@ void InitOpenGL() {
 	//For antialiasing:
 	glEnable(GL_MULTISAMPLE);
 
+	//For transparency:
+	glEnable(GL_BLEND); 
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBlendEquation(GL_FUNC_ADD);
+
 	glLineWidth(3.0f);
 
 	shapeShader = ShapeShader::getInstance().shader;
+	colorShapeShader = ColorShapeShader::getInstance().shader;
 	camera.resetCameraState();
 
 	// Build and compile our shader program
@@ -3299,41 +3318,26 @@ void Render() {
 	glClearColor(0.0f, 0.8f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	//Transparency to be used when showing principal frame or rotation axis:
+	float alpha_value = .3f; 
+
+	if (impulseMode || (!plotRotationAxis && !plotPrincipalFrame)) {
+		alpha_value = 1.0f; //Render as opaque if not showing those
+	}
+
 	glm::vec3 lightPos(0.0f, 3.0f, 3.0f);
 
 	glUniform3f(ShapeShader::getInstance().lightPosLoc, lightPos.x, lightPos.y, lightPos.z);
 	glUniformMatrix4fv(ShapeShader::getInstance().viewLoc, 1, GL_FALSE, glm::value_ptr(camera.view));
 	glUniformMatrix4fv(ShapeShader::getInstance().projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-	//if (!USING_EMSCRIPTEN)
-		glUniformMatrix4fv(ShapeShader::getInstance().sceneTransformLoc, 1, GL_FALSE, glm::value_ptr(sceneTransform));
+	glUniformMatrix4fv(ShapeShader::getInstance().sceneTransformLoc, 1, GL_FALSE, glm::value_ptr(sceneTransform));
 
 	//Draw each superquadric based on its own translation && rotation
 	for (std::vector<Shape*>::iterator it = shapes.begin(); it != shapes.end(); it++) {
 		Shape *shape = (*it);
-
 		glm::mat4 shapeRot = shape->getRotationMatrix();
 
-		shape->model = glm::scale((glm::translate(MathUtils::I4, shape->translation) * shapeRot), glm::vec3(shape->scaling));
-		//shape->model = glm::translate(shape->rotation * (glm::scale(i4, shape->scaling)), shape->translation);
-
-		glUniform4f(ShapeShader::getInstance().objectColorLoc, shape->objectColor.x, shape->objectColor.y, shape->objectColor.z, 1.0f);
-		//glUniform3fv(objectColorLoc, 3, &(shape->objectColor[0]));
-		glUniformMatrix4fv(ShapeShader::getInstance().modelLoc, 1, GL_FALSE, glm::value_ptr(shape->model));
-
-		if (shape->useCustomColors) {
-			ColorShapeShader::getInstance().shader.Use();
-			glUniform3f(ColorShapeShader::getInstance().lightPosLoc, lightPos.x, lightPos.y, lightPos.z);
-			glUniformMatrix4fv(ColorShapeShader::getInstance().viewLoc, 1, GL_FALSE, glm::value_ptr(camera.view));
-			glUniformMatrix4fv(ColorShapeShader::getInstance().projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-			glUniformMatrix4fv(ColorShapeShader::getInstance().sceneTransformLoc, 1, GL_FALSE, glm::value_ptr(sceneTransform));
-			glUniformMatrix4fv(ColorShapeShader::getInstance().modelLoc, 1, GL_FALSE, glm::value_ptr(shape->model));
-		}
-
-		shape->Draw(shapeShader);
-		if (shape->useCustomColors) {
-			ShapeShader::getInstance().shader.Use();
-		}
-
+		//Since frame/rot axis is fully opaque, must be rendered before shape
 		if (plotPrincipalFrame) {
 			float scaling = shape->scaling * (shape->boundingSphereRadius + .05f);
 			if (!useOpenGLframe && !using2DShapes) {
@@ -3346,7 +3350,28 @@ void Render() {
 			shape->DrawRotationAxis(shapeShader);
 		}
 
-		//Draw velociy:
+		shape->model = glm::scale((glm::translate(MathUtils::I4, shape->translation) * shapeRot), glm::vec3(shape->scaling));
+
+		glUniform4f(ShapeShader::getInstance().objectColorLoc, shape->objectColor.x, shape->objectColor.y, shape->objectColor.z, alpha_value);
+		glUniformMatrix4fv(ShapeShader::getInstance().modelLoc, 1, GL_FALSE, glm::value_ptr(shape->model));
+
+		if (shape->useCustomColors) {
+			ColorShapeShader::getInstance().shader.Use();
+			glUniform3f(ColorShapeShader::getInstance().lightPosLoc, lightPos.x, lightPos.y, lightPos.z);
+			glUniformMatrix4fv(ColorShapeShader::getInstance().viewLoc, 1, GL_FALSE, glm::value_ptr(camera.view));
+			glUniformMatrix4fv(ColorShapeShader::getInstance().projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+			glUniformMatrix4fv(ColorShapeShader::getInstance().sceneTransformLoc, 1, GL_FALSE, glm::value_ptr(sceneTransform));
+			glUniformMatrix4fv(ColorShapeShader::getInstance().modelLoc, 1, GL_FALSE, glm::value_ptr(shape->model));
+			shape->Draw(colorShapeShader);
+
+			//Re-use default shader for drawing frames:
+			ShapeShader::getInstance().shader.Use();
+		}
+		else {
+			shape->Draw(shapeShader);
+		}
+
+		//Draw velocity arrows:
 		if (setup) {
 
 			if (cursorState == velocity) {
@@ -3421,8 +3446,8 @@ void DestroyShapes() {
 	// Properly de-allocate all resources once they've outlived their purpose
 	for (std::vector<Shape*>::iterator it = shapes.begin(); it != shapes.end(); it++) {
 		Shape *shape = (*it);
-		glDeleteVertexArrays(1, &(shape->VAO));
-		glDeleteBuffers(1, &(shape->VBO));
+		//glDeleteVertexArrays(1, &(shape->VAO));
+		//glDeleteBuffers(1, &(shape->VBO));
 		delete shape;
 	}
 }

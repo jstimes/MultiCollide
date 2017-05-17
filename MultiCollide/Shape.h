@@ -23,6 +23,9 @@ struct ParamPoint {
 // objects to be used in collision simulation
 class Shape {
 
+private:
+	glm::mat3 angularInertia;
+
 public:
 
 	//OpenGL:
@@ -38,14 +41,21 @@ public:
 	glm::vec3 centroid;  
 
 	//2D shapes just use the [0][0] entry
-	glm::mat3 angularInertia;
+	
 	virtual void ComputeInertia() = 0;
+
+	glm::mat3 getAngularInertia() {
+		return cbrtf(mass) * angularInertia;
+	}
+
+	void setAngularInertia(glm::mat3 &angular_inertia) {
+		this->angularInertia = angular_inertia;
+	}
 
 	glm::vec3 translation;
 
 	glm::vec3 rotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
 	float rotationAngle = 0.0f;
-	//glm::mat4 rotation;
 
 	glm::mat4 getRotationMatrix() {
 		//Converts to quaternion, then to rotation matrix.
@@ -73,22 +83,17 @@ public:
 		this->rotationAxis = glm::axis(curQuat);
 	}
 
+	//Magnitude gives speed:
 	glm::vec3 angularVelocityAxis = glm::vec3(0.0f, 0.0f, 0.0f); 
-
-	//float angularVelocity = 0.0f;
 
 	glm::vec3 curVelocity;
 
-	//glm::vec3 scaling = glm::vec3(1.0f, 1.0f, 1.0f);
+	//Used for x, y, and z components (uniform scaling)
 	float scaling = 1.0f;
 
 	float time;
 
 	float mass = 1.0f;
-
-	//float frictionCoefficient = .25f;    // mu
-
-	//float restitutionCoefficient = 1.0f; // e
 
 	
 	//Collision Detection:
@@ -116,6 +121,8 @@ public:
 
 	glm::vec3 contactColor = glm::vec3(1.0f, 0.0f, 1.0f);
 
+	glm::vec3 contactColor2 = glm::vec3(1.0f, 1.0f, 0.0f);
+
 	glm::vec3 objectColor = defaultColor;
 
 	std::string name;
@@ -133,6 +140,8 @@ public:
 			}
 			this->translation += -this->curVelocity * deltaT;
 		}
+
+		this->time = -1.0f * seconds;
 	}
 
 
@@ -153,20 +162,20 @@ public:
 
 
 	virtual void DrawInitialVelocity(Shader &shader) {
-		Arrow::Draw(shader, glm::length(curVelocity), 2.0f, curVelocity, centroid);
+		Arrow::Draw(shader, glm::length(this->curVelocity), 2.0f, this->curVelocity, this->centroid);
 	}
 
 	virtual void DrawInitialAngularVelocity(Shader &shader) {
-		Arrow::Draw(shader, glm::length(angularVelocityAxis), 2.0f, angularVelocityAxis, translation);
+		Arrow::Draw(shader, glm::length(this->angularVelocityAxis), 2.0f, this->angularVelocityAxis, translation);
 	}
 
 	virtual void DrawRotationAxis(Shader &shader) {
-		glm::quat q = glm::angleAxis(rotationAngle, rotationAxis);
-		glm::vec3 axis = glm::vec3(q.x, q.y, q.z);
+		//glm::quat q = glm::angleAxis(rotationAngle, rotationAxis);
+		//glm::vec3 axis = glm::vec3(q.x, q.y, q.z);
 		
-		if (!ShapeUtils::isZeroVec(axis)) {
-			Arrow::Draw(shader, 1.5f * boundingSphereRadius, 1.0f, axis, translation);
-		}
+		//if (!ShapeUtils::isZeroVec(axis)) {
+			Arrow::Draw(shader, 1.5f * this->boundingSphereRadius, 1.0f, this->rotationAxis, this->translation);
+		//}
 	}
 
 	//These methods are required so that the correct collision detection method

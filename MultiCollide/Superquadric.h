@@ -133,13 +133,16 @@ public:
 
 		Izz = pre * (a1*a1 + a2*a2) * betas;
 
-		angularInertia = glm::mat3();
-		angularInertia[0][0] = Ixx;
-		angularInertia[1][1] = Iyy;
-		angularInertia[1][1] = Izz;
+		glm::mat3 angular_inertia;
+		angular_inertia[0][0] = Ixx;
+		angular_inertia[1][1] = Iyy;
+		angular_inertia[1][1] = Izz;
+
+		this->setAngularInertia(angular_inertia);
 	}
 
 	float Beta(float x, float y) {
+		//TODO
 		return 1.0f;
 	}
 
@@ -201,14 +204,10 @@ public:
 	}
 
 	virtual void Draw(Shader &shader) override {
-
-		glUniformMatrix4fv(shader.getUniform("model"), 1, GL_FALSE, glm::value_ptr(this->model));
-		glUniform4f(shader.getUniform("objectColor"), objectColor.x, objectColor.y, objectColor.z, 1.0f);
 		glBindVertexArray(this->VAO);
 		glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 6);
 		glBindVertexArray(0);
-
 	}
 
 	virtual ~Superquadric() override {

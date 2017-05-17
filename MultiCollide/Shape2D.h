@@ -83,7 +83,9 @@ public:
 			denominator += tail;
 		}
 
-		this->angularInertia[0][0] = (this->mass / 6.0f) * (numerator / denominator);
+		glm::mat3 angular_inertia;
+		angular_inertia[0][0] = (this->mass / 6.0f) * (numerator / denominator);
+		this->setAngularInertia(angular_inertia);
 	}
 
 	virtual void InitVAOandVBO(Shader &shader) override {
