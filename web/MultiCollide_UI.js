@@ -1304,8 +1304,8 @@ function multicollide_update() {
 		var w2EndY = round3(_getImpactResultsW2endY());
 		var w2EndZ = round3(_getImpactResultsW2endZ());
 		
-		var endOfSliding = _getImpactResultsEndOfSliding();
-		var endOfCompression = _getImpactResultsEndOfCompression();
+		var endOfSliding = round3(_getImpactResultsEndOfSliding());
+		var endOfCompression = round3(_getImpactResultsEndOfCompression());
 		
 		var IendX = round3(_getImpactResultsIendX());
 		var IendY = round3(_getImpactResultsIendY());
@@ -1390,18 +1390,27 @@ function multicollide_update() {
 				html += "</table>";
 				
 				
-				html += "<br><br><b><i>Impulse information: </i></b><br><table class='postImpactTable'>" +
-								
-				"<tr><td class='postImpactCell'>End of Sliding (normal impulse)</td><td class='postImpactCell'>" + endOfSliding + "</td></tr>" +
+				html += "<br><br><b><i>Impulse information: </i></b><br><table class='postImpactTable'>";
+							
+                var endOfSlidingRow = 
+				"<tr><td class='postImpactCell'>End of Sliding (normal impulse)</td><td class='postImpactCell'>" + endOfSliding + "</td></tr>";
                 
-				"<tr><td class='postImpactCell'>End of Compression (normal impulse)</td><td class='postImpactCell'>" + endOfCompression + "</td></tr>" +
+                var endOfCompressionRow = 
+				"<tr><td class='postImpactCell'>End of Compression (normal impulse)</td><td class='postImpactCell'>" + endOfCompression + "</td></tr>";
                 
-                "<tr><td class='postImpactCell'>End of Restitution (total impulse)</td><td class='postImpactCell'><div class='vectorDiv'>" + getHtmlVector(IendX, IendY, IendZ) + "</div></td></tr>" +
+                if(endOfSliding > endOfCompression){
+                    html += endOfCompressionRow + endOfSlidingRow;
+                }
+                else {
+                    html += endOfSlidingRow + endOfCompressionRow;
+                }
+                
+                html += "<tr><td class='postImpactCell'>End of Restitution (total impulse)</td><td class='postImpactCell'><div class='vectorDiv'>" + getHtmlVector(IendX, IendY, IendZ) + "</div></td></tr>" +
                 "</table>";
 				
 				html += "<br><br><div style='text-align: center;' class='centered-div'>" +
-                    "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Continue'>" +
-                    "<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Restart'></div><br><br>" +
+                    "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Resume Animation'>" +
+                    "<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Replot'></div><br><br>" +
                 "</div>";
 		
 		var accord = $('#shapesAccordion');
