@@ -75,7 +75,7 @@
                 <div class="dropdown-content">
                     <label><input type='radio' name='rotationDisplay' value='rotationAxis'>Plot Rotation Axis</label>
 					<label><input type='radio' name='rotationDisplay' value='principalFrame'>Plot Principal Frame</label>
-					<label><input type='radio' name='rotationDisplay' value='noRotationDisplay'>No Display</label>
+					<label><input type='radio' name='rotationDisplay' value='noRotationDisplay'>None</label>
                 </div>
             </div>
             
@@ -105,17 +105,6 @@
 	</div>
 
      <div id='leftSidePanel'>
-		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='run' value='Run'><br>
-        <input type='button' class='ui-button ui-widget ui-corner-all main-button' id='restoreBtn' value='Restore Scene' disabled><br>
-		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='reset' value='Clear Scene'><br>
-		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='resetCamera' value='Reset Camera'>
-		
-        <br><br>
-        
-        <input type='button' id='uploadSceneBtn' class='ui-button ui-widget ui-corner-all main-button' value='Upload Scene'>
-		<br>
-		<br>
-        
         <ul id='3DaddShapeMenu' style='width: 150px;'>
 			<li><div>Add Shape</div>
 				<ul id='3Dsubmenu'>
@@ -140,6 +129,19 @@
 			</li>
 		</ul>
         <br>
+        
+		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='run' value='Run'><br>
+        <input type='button' class='ui-button ui-widget ui-corner-all main-button' id='restoreBtn' value='Restore Scene' disabled><br>
+		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='reset' value='Clear Scene'><br>
+		<input type='button' class='ui-button ui-widget ui-corner-all main-button' id='resetCamera' value='Reset Camera'>
+		
+        <br><br>
+        
+        <input type='button' id='uploadSceneBtn' class='ui-button ui-widget ui-corner-all main-button' value='Upload Scene'>
+		<br>
+		<br>
+        
+        
 			<span><b>Cursor state:</b></span><br>
 			<label class='cursor-label'>
 			<input class='cursorState icoDisable' type='radio' name='mode' id='translate' checked>Translate
@@ -153,7 +155,7 @@
 			<label class='cursor-label'>
 			<input class='cursorState icoDisable' type='radio' name='mode' id='velocity'>Velocity
 			</label><br>
-			<label class='cursor-label' class='hideIn2D'>
+			<label class='cursor-label hideIn2D'>
 			<input class='cursorState icoDisable' type='radio' name='mode' id='angularVelocity'>Angular 
 			Velocity
 			</label>
