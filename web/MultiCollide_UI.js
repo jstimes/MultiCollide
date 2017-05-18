@@ -360,19 +360,19 @@ function multicollide_init() {
                 var table = "<span>Angular Inertia: </span><br><br>"+
                 "<table class='matrix angularInertiaMatrix'>" + 
                     "<tr>" + 
-                        "<td>" + roundNumber(xx) + "</td>" + 
-                        "<td>" + roundNumber(xy) + "</td>" + 
-                        "<td>" + roundNumber(xz) + "</td>" + 
+                        "<td class='ang-inertia-xx'>"+roundNumber(xx)+"</td>" + 
+                        "<td class='ang-inertia-xy'>"+roundNumber(xy)+"</td>" + 
+                        "<td class='ang-inertia-xz'>"+roundNumber(xz)+"</td>" + 
                     "</tr>" + 
                     "<tr>" + 
-                        "<td>" + roundNumber(yx) + "</td>" + 
-                        "<td>" + roundNumber(yy) + "</td>" + 
-                        "<td>" + roundNumber(yz) + "</td>" + 
+                        "<td class='ang-inertia-yx'>"+roundNumber(yx)+"</td>" + 
+                        "<td class='ang-inertia-yy'>"+roundNumber(yy)+"</td>" + 
+                        "<td class='ang-inertia-yz'>"+roundNumber(yz)+"</td>" + 
                     "</tr>" + 
                     "<tr>" + 
-                        "<td>" + roundNumber(zx) + "</td>" + 
-                        "<td>" + roundNumber(zy) + "</td>" + 
-                        "<td>" + roundNumber(zz) + "</td>" + 
+                        "<td class='ang-inertia-zx'>"+roundNumber(zx)+"</td>" + 
+                        "<td class='ang-inertia-zy'>"+roundNumber(zy)+"</td>" + 
+                        "<td class='ang-inertia-zz'>"+roundNumber(zz)+"</td>" + 
                     "</tr>" + 
                     "</table>";
                 $("#" + sectionId + " .angularInertia").append(table);
@@ -481,6 +481,35 @@ function multicollide_init() {
 					_setShapeScale(index, value);
 				} else if(dataElement === "mass"){
 					_setShapeMass(index, value);
+                    
+                    //Need to update angular inertia matrix too:
+                    var inertiaTable = $("#" + sectionId + " .angularInertiaMatrix");
+                    
+                    var aXX = roundNumber(_getShapeAngularInertiaXX(index));
+                    var aXY = roundNumber(_getShapeAngularInertiaXY(index));
+                    var aXZ = roundNumber(_getShapeAngularInertiaXZ(index));
+                    
+                    var aYX = roundNumber(_getShapeAngularInertiaYX(index));
+                    var aYY = roundNumber(_getShapeAngularInertiaYY(index));
+                    var aYZ = roundNumber(_getShapeAngularInertiaYZ(index));
+                    
+                    var aZX = roundNumber(_getShapeAngularInertiaZX(index));
+                    var aZY = roundNumber(_getShapeAngularInertiaZY(index));
+                    var aZZ = roundNumber(_getShapeAngularInertiaZZ(index));
+                    
+                    inertiaTable.find('.ang-inertia-xx').html(String(aXX));
+                    inertiaTable.find('.ang-inertia-xy').html(String(aXY));
+                    inertiaTable.find('.ang-inertia-xz').html(String(aXZ));
+                    
+                    inertiaTable.find('.ang-inertia-yx').html(String(aYX));
+                    inertiaTable.find('.ang-inertia-yy').html(String(aYY));
+                    inertiaTable.find('.ang-inertia-yz').html(String(aYZ));
+                    
+                    inertiaTable.find('.ang-inertia-zx').html(String(aZX));
+                    inertiaTable.find('.ang-inertia-zy').html(String(aZY));
+                    inertiaTable.find('.ang-inertia-zz').html(String(aZZ));
+                    
+                    
 				} 
 				/*else if(dataElement === "friction"){
 					_setShapeFriction(index, value);
@@ -1362,10 +1391,13 @@ function multicollide_update() {
 				
 				
 				html += "<br><br><b><i>Impulse information: </i></b><br><table class='postImpactTable'>" +
-					"<tr><td class='postImpactCell'>Total Impulse</td><td class='postImpactCell'><div class='vectorDiv'>" + getHtmlVector(IendX, IendY, IendZ) + "</div></td></tr>" +
 								
-				"<tr><td class='postImpactCell'>End of Sliding</td><td class='postImpactCell'>" + endOfSliding + "</td></tr>" +
-				"<tr><td class='postImpactCell'>End of Compression</td><td class='postImpactCell'>" + endOfCompression + "</td></tr></table>";
+				"<tr><td class='postImpactCell'>End of Sliding (normal impulse)</td><td class='postImpactCell'>" + endOfSliding + "</td></tr>" +
+                
+				"<tr><td class='postImpactCell'>End of Compression (normal impulse)</td><td class='postImpactCell'>" + endOfCompression + "</td></tr>" +
+                
+                "<tr><td class='postImpactCell'>End of Restitution (total impulse)</td><td class='postImpactCell'><div class='vectorDiv'>" + getHtmlVector(IendX, IendY, IendZ) + "</div></td></tr>" +
+                "</table>";
 				
 				html += "<br><br><div style='text-align: center;' class='centered-div'>" +
                     "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Continue'>" +
