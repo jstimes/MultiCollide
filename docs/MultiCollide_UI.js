@@ -1339,7 +1339,7 @@ function multicollide_update() {
 			"<div id='graphsContainer' height='520px'>";
 			
             html += "<br><div style='text-align: center;' class='centered-div'>" +
-                "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Resume Animation'>" +
+                "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Post-Impact Animation'>" +
 				"<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Replot'></div><br>";
                 
 			if(showImpulseGraph){
@@ -1408,10 +1408,10 @@ function multicollide_update() {
                 html += "<tr><td class='postImpactCell'>End of Restitution (total impulse)</td><td class='postImpactCell'><div class='vectorDiv'>" + getHtmlVector(IendX, IendY, IendZ) + "</div></td></tr>" +
                 "</table>";
 				
-				html += "<br><br><div style='text-align: center;' class='centered-div'>" +
+				html += "<br><br>";/*<div style='text-align: center;' class='centered-div'>" +
                     "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Resume Animation'>" +
                     "<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Replot'></div><br><br>" +
-                "</div>";
+                "</div>";*/
 		
 		var accord = $('#shapesAccordion');
 		accord.append(html);

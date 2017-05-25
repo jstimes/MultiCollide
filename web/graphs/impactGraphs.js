@@ -65,14 +65,19 @@ function drawVelocity(velocityPtsArr, endOfCompression, endOfSliding){
 				//label: 'Sliding Velocity Curve (Hodograph)',
 				data: curData,
 				pointBackgroundColor: "#B00000",
+                showLine: true,
+                borderColor: "#B00000",
+                pointRadius: .1,
 			},
 			{
 				data: slidingPt,
-				pointBackgroundColor: "#00FF00"
+				pointBackgroundColor: "#00FF00",
+                pointRadius: 2.0
 			},
 			{
 				data: compressionPt,
-				pointBackgroundColor: "#FF0000"
+				pointBackgroundColor: "#0000FF",
+                pointRadius: 2.0
 			}]
 		},
 		
@@ -182,6 +187,21 @@ ImpulseGraph.prototype.drawVisualization = function() {
 	  }
 	  max += Math.abs(max * .1);
 	  min -= Math.abs(min * .1);
+      
+      var step = .5;
+      var range = max - min;
+      console.log("Range: " + range);
+      if(range < 1.0){
+          step = .25;
+      }
+      else if (range > 3.0){
+          step = 1.0;
+      }
+      if(range < step){
+          step = range / 4.0;
+          step = +step.toFixed(2);
+      }
+      console.log("Step: " + step);
 
 	  // specify options
 	  var options = {
@@ -200,6 +220,10 @@ ImpulseGraph.prototype.drawVisualization = function() {
 		xMin: min, 
 		yMin: min, 
 		zMin: min,
+        
+        xStep: step,
+        yStep: step, 
+        zStep: step,
 		
 		dataColor: {fill: '#0000FF', stroke: '#0000FF', strokeWidth: 1}
 	  };
