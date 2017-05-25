@@ -982,8 +982,9 @@ function restoreSetups() {
 function setShapePosition(index, position){
     var pos = position.copy();
     
-    if(!jacobs_frame && !using2D){
+    if(!jacobs_frame){
         pos = flipVecToOpenGLFrame(pos);
+        console.log("Flipped");
     }
     _setShapePositionX(index, pos.x);
     _setShapePositionY(index, pos.y);
@@ -995,7 +996,7 @@ function setShapePosition(index, position){
 function setShapeVelocity(index, velocity){
     var vel = velocity.copy();
     
-    if(!jacobs_frame && !using2D){
+    if(!jacobs_frame){
         vel = flipVecToOpenGLFrame(vel);
     }
     _setShapeVelocityX(index, vel.x);
@@ -1022,7 +1023,7 @@ function setShapeAngularVelocityAxis(index, angularVelocityAxis){
     var angVel = angularVelocityAxis.copy();
     
     if(!jacobs_frame){
-        angVel =flipVecToOpenGLFrame(angVel);
+        angVel = flipVecToOpenGLFrame(angVel);
     }
     _setShapeAngularVelocityX(index, angVel.x);
     _setShapeAngularVelocityY(index, angVel.y);
