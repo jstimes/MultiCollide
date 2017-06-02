@@ -42,6 +42,21 @@ function multicollide_init() {
 			
 		}
 	});
+    
+    var regularPolygonDialog = $("#regularPolygonModal").dialog({
+		autoOpen: false,
+		height: 400,
+		width: 600,
+		modal: true,	
+		buttons: {
+			Cancel: function() {
+				regularPolygonDialog.dialog( "close" );
+			}
+		},
+		close: function() {
+			
+		}
+	});
 	
 	var numCustomVertices = 3;
 	var meshDialog = $("#meshModal").dialog({
@@ -93,6 +108,7 @@ function multicollide_init() {
 		}
 	});
 	
+    /*
 	$("#addCustomPolygonBtn").click(function() {
 		
 		var pts = [];
@@ -103,16 +119,7 @@ function multicollide_init() {
 			var xyArr = ptsTextArr[i].split(',');
 			pts.push({x: parseFloat(xyArr[0]), y: parseFloat(xyArr[1])});
 		}
-		/*
-		$(".customVertices").each(function() {
-			if($(this).hasClass('xcoord')){
-				lastPt = {x: $(this).val() };
-			}
-			else {
-				lastPt.y = $(this).val();
-				pts.push(lastPt);
-			}
-		});*/
+
 		
 		//console.log(pts);
 		_createNewCustomPolygon();
@@ -121,7 +128,7 @@ function multicollide_init() {
 		}
 		_doneCreatingCustomPolygon();
 		addShape();
-	});
+	});*/
 	
 	$("#addAnotherVertexBtn").click(function(){
 		var html = $("<li>").append("(x, y): ").append( $("<input>", {
@@ -578,7 +585,7 @@ function multicollide_init() {
      var vertices = [];
      $("#polygonCanvas").mousedown(function(event){
             var pos = getCursorPosition(event);
-            vertices.push(pos);
+            
             if(!alreadyClicked){
                 originalClickPos = pos;
                 prevClickPos = pos;
@@ -588,7 +595,6 @@ function multicollide_init() {
                 if(distance(pos, originalClickPos) < distanceOffsetFromOriginal){
                     pos = originalClickPos; //close the shape
                     $("#addCustomPolygonCanvasBtn").prop('disabled', false);
-                    vertices.pop();
                 }
                 var canvas = document.getElementById('polygonCanvas');
                 var context = canvas.getContext('2d');
@@ -599,6 +605,9 @@ function multicollide_init() {
                 context.stroke();
                 
                 prevClickPos = pos;
+                
+                var height = canvas.scrollHeight;
+                vertices.push({'x': pos.x, 'y': height - pos.y});
             }
     });
     
@@ -614,6 +623,7 @@ function multicollide_init() {
        _createNewCustomPolygon();
 		for(var i=0; i<vertices.length; i++){
 			_addCustomPolygonVertex(vertices[i].x, vertices[i].y);
+            console.log("x: " + vertices[i].x + ", y: " +  vertices[i].y);
 		}
 		_doneCreatingCustomPolygon();
 		addShape(); 
@@ -667,6 +677,12 @@ function multicollide_init() {
 	});
 	
 	$('#addCustomSuperquadricBtn').click(function() {
+        $("#a1").val(1);
+        $("#a2").val(1);
+        $("#a3").val(1);
+        $("#e1").val(1);
+        $("#e2").val(1);
+        
 		customSuperquadricDialog.dialog("open");
 	});
 	
@@ -698,8 +714,12 @@ function multicollide_init() {
 		addShape();
 	});
 	
-	$("#addPolygonBtn").click(function() {
+	$("#addCustomPolygonBtn").click(function() {
 		customPolygonDialog.dialog("open");
+	});
+    
+    $("#addRegularPolygonBtn").click(function() {
+		regularPolygonDialog.dialog("open");
 	});
 	
 	$("#addPolygon").click(function() {
@@ -1344,8 +1364,13 @@ function multicollide_update() {
 				"<input type='button' class='ui-button ui-widget ui-corner-all impulseRestartBtn' value='Replot'></div><br>";
                 
 			if(showImpulseGraph){
-				html += "<p class='graphLabel'>Impulse Accumulation</p>" + 
-				"<div id='graph1'  height='230px' class='centered-div'></div><br><br>";
+				html += "<p class='graphLabel'>Impulse Accumulation</p>";
+                if(using2D){
+                    html += "<canvas id='graph1' height='240px' class='centered-div'></canvas>";
+                }
+                else {
+                    html += "<div id='graph1'  height='230px' class='centered-div'></div><br><br>";
+                }
 			}
 			
 			if(showVelocityGraph){
@@ -1356,7 +1381,7 @@ function multicollide_update() {
 				
 				
 			html += 
-				"<br><br><b><i>Post-impact values: </i></b><br>" +
+				"<br><br><b><i>Post-Impact Values: </i></b><br>" +
 				"<table class='postImpactTable'><tr><td class='postImpactCell'></td><td class='postImpactCell'>" + Pointer_stringify(_getContactShape1Name()) + "</td><td class='postImpactCell'>" + Pointer_stringify(_getContactShape2Name()) + "</td></tr>" + 
 					"<tr><td class='postImpactCell'><span class='vectorNotation'>v+</span></td><td class='postImpactCell'>";
 					if(!using2D){
@@ -1391,13 +1416,13 @@ function multicollide_update() {
 				html += "</table>";
 				
 				
-				html += "<br><br><b><i>Impulse information: </i></b><br><table class='postImpactTable'>";
+				html += "<br><br><b><i>Impulse Information: </i></b><br><table class='postImpactTable'>";
 							
                 var endOfSlidingRow = 
-				"<tr><td class='postImpactCell'>End of Sliding (normal impulse)</td><td class='postImpactCell'>" + endOfSliding + "</td></tr>";
+				"<tr><td class='postImpactCell'>End of Sliding (Normal Impulse)</td><td class='postImpactCell'>" + endOfSliding + "</td></tr>";
                 
                 var endOfCompressionRow = 
-				"<tr><td class='postImpactCell'>End of Compression (normal impulse)</td><td class='postImpactCell'>" + endOfCompression + "</td></tr>";
+				"<tr><td class='postImpactCell'>End of Compression (Normal Impulse)</td><td class='postImpactCell'>" + endOfCompression + "</td></tr>";
                 
                 if(endOfSliding > endOfCompression){
                     html += endOfCompressionRow + endOfSlidingRow;
@@ -1406,8 +1431,14 @@ function multicollide_update() {
                     html += endOfSlidingRow + endOfCompressionRow;
                 }
                 
-                html += "<tr><td class='postImpactCell'>End of Restitution (total impulse)</td><td class='postImpactCell'><div class='vectorDiv'>" + getHtmlVector(IendX, IendY, IendZ) + "</div></td></tr>" +
-                "</table>";
+                if(using2D){
+                    html += "<tr><td class='postImpactCell'>End of Restitution (Total Impulse)</td><td class='postImpactCell'><div class='vectorDiv'>" + getHtmlVector(IendX,   IendZ) + "</div></td></tr>" +
+                        "</table>";
+                }
+                else {
+                    html += "<tr><td class='postImpactCell'>End of Restitution (Total Impulse)</td><td class='postImpactCell'><div class='vectorDiv'>" + getHtmlVector(IendX,   IendY, IendZ) + "</div></td></tr>" +
+                        "</table>";
+                }
 				
 				html += "<br><br>";/*<div style='text-align: center;' class='centered-div'>" +
                     "<input type='button' class='ui-button ui-widget ui-corner-all impulseContinueBtn' value='Resume Animation'>" +
@@ -1448,7 +1479,12 @@ function multicollide_update() {
 			var indexToOpen = accord.children('div').length - 1;
 			accord.accordion('option', 'active', indexToOpen);
 			if(showImpulseGraph){
-				drawImpulse(impulsePts, endOfCompression, endOfSliding);
+                if(using2D){
+                    drawVelocity(impulsePts, endOfCompression, endOfSliding, "#graph1");
+                }
+                else {
+                    drawImpulse(impulsePts, endOfCompression, endOfSliding);
+                }
 			}
 			if(showVelocityGraph) {
 				drawVelocity(velocityPts, endOfCompression, endOfSliding);
@@ -1561,8 +1597,10 @@ function multicollide_update() {
 				"<tr>" + 
 					"<td>" + x + "</td></tr>" + 
 					"<tr><td>" + y + "</td></tr>";
-					if(typeof z !== undefined)
+					if(z !== undefined){
 						html += "<tr><td>" + z + "</td></tr>";
+                        
+                    }
 			html +=	"</table>";
 	return html;
  }

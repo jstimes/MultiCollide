@@ -111,8 +111,8 @@
 				<li id='addSphereBtn'><div>Sphere</div></li>
 				<li id='addCubeBtn'><div>Cube</div></li>
 				<li id='addEllipsoidBtn'> <div>Ellipsoid</div></li>
-				<li id='addSuperquadricBtn'><div>Superquadric</div></li>
-				<li id='addCustomSuperquadricBtn'><div>Custom Superquadric</div></li>
+				<!--li id='addSuperquadricBtn'><div>Superquadric</div></li-->
+				<li id='addCustomSuperquadricBtn'><div>Superquadric</div></li>
 				<li id='addMeshBtn'><div>Tetrahedral Mesh</div></li>
 				<li id='addIcoBtn'><div>Icosa-Tetra Collision</div></li>
 				</ul>
@@ -124,7 +124,8 @@
 				<li id='addCircleBtn'><div>Circle</div></li>
 				<li id='addTriangleBtn'><div>Triangle</div></li>
 				<li id='addSquareBtn'><div>Square</div></li>
-				<li id='addPolygonBtn'><div>Custom Polygon</div></li>
+				<li id='addRegularPolygonBtn'><div>Regular Polygon</div></li>
+                <li id='addCustomPolygonBtn'><div>Custom Polygon</div></li>
 				</ul>
 			</li>
 		</ul>
@@ -180,11 +181,11 @@
 	</div>
 
 <div id='customSuperquadricModal' title='Create Custom Superquadric'>
-	A1 (x-direction strecthing): <input type='text' id='a1' value='1'><br>
-	A2 (y-direction strecthing): <input type='text' id='a2' value='1'><br>
-	A3 (z-direction strecthing): <input type='text' id='a3' value='1'><br>
-	E1 (top-bottom roundedness): <input type='text' id='e1' value='1'><br>
-	E2 (horizontal roundedness): <input type='text' id='e2' value='1'><br><br>
+	A1 (x-direction strecthing): <input type='number' min='.1' max='5' step='.2' id='a1' value='1'>&nbsp;(min: 0.1, max: 5)<br>
+	A2 (y-direction strecthing): <input type='number' min='.1' max='5' step='.2' id='a2' value='1'>&nbsp;(min: 0.1, max: 5)<br>
+	A3 (z-direction strecthing): <input type='number' min='.1' max='5' step='.2' id='a3' value='1'>&nbsp;(min: 0.1, max: 5)<br>
+	E1 (top-bottom roundedness): <input type='number' min='.3' max='3' step='.2' id='e1' value='1'>&nbsp;(min: 0.3, max: 3)<br>
+	E2 (horizontal roundedness): <input type='number' min='.3' max='3' step='.2' id='e2' value='1'>&nbsp;(min: 0.3, max: 3)<br><br>
 	<input type='button' id='addCustom' value='Add' >
     
     <p>For more information on Superquadrics:</p>
@@ -193,24 +194,15 @@
     </a>
 </div>
 
-<div id='customPolygonModal' title='Create Custom Polygon'>
+<div id='regularPolygonModal' title='Create Custom Polygon'>
 	<br>
 	<b>Regular Polygon:</b><br>
 	Number of sides: <input type='text' id='numSides' value='5' min='3' max='99'><br><br>
 	<input type='button' id='addPolygon' value='Add' >
-	<br><hr>
+</div>
+
+<div id='customPolygonModal' title='Create Custom Polygon'>
 	<b>Input Vertices: </b><br>
-	<!--
-	<ol id='customVerticesList'>
-		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
-		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
-		<li>(x, y): <input type='text' class='customVertices xcoord'>, <input type='text' class='customVertices ycoord'></li>
-	</ol>
-	<input type='button' id='addAnotherVertexBtn' value='Add Another Vertex'>
-	<input type='button' id='removeVertexBtn' value='Remove Last Vertex'>-->
-	<!-- <span>Enter vertices in counter-clockwise order, one per line</span><br> -->
-	<!-- <textarea rows='4' cols='20' id='customVerticesTextArea' placeholder='x, y'></textarea><br> -->
-	<!-- <input type='button' id='addCustomPolygonBtn' value='Add Shape'> -->
     <span>Click in the canvas to start, then click again for each vertex, and close the shape by clicking lastly at the original vertex.</span><br>
     <input type='button' id='resetCustomPolygonCanvasBtn' value='Reset'>
     <input type='button' id='addCustomPolygonCanvasBtn' value='Add' disabled><br><br>

@@ -9,9 +9,12 @@ function drawImpulse(impulsePtsArr, endOfCompression, endOfSliding) {
 	ig = new ImpulseGraph(impulsePtsArr, endOfCompression, endOfSliding);
 }
 
-function drawVelocity(velocityPtsArr, endOfCompression, endOfSliding){
+function drawVelocity(velocityPtsArr, endOfCompression, endOfSliding, graphId){
 	//vg = new VelocityGraph(velocityPtsArr);
-	var ctx = $("#graph2");
+    if(!graphId){
+        graphId = "#graph2";
+    }
+	var ctx = $(graphId);
 	
 	var max = 0;
     var min = 0;
@@ -173,10 +176,11 @@ ImpulseGraph.prototype.drawVisualization = function() {
 
 	  this.data.add({x: this.pts[this.curPt], y: this.pts[this.curPt+1], z: this.pts[this.curPt+2]});
 	  this.curPt += 3;
-	  
+	  /*
 	  var max = 0;
 	  var min = 0;
 	  
+      
 	  for(var p=0; p<this.pts.length; p++){
 		if(this.pts[p] > max){
 			max = this.pts[p];
@@ -187,7 +191,85 @@ ImpulseGraph.prototype.drawVisualization = function() {
 	  }
 	  max += Math.abs(max * .1);
 	  min -= Math.abs(min * .1);
+      */
+      var xMin = 100;
+      var yMin = 100;
+      var zMin = 100;
+      var xMax = -100;
+      var yMax = -100;
+      var zMax = -100;
+      for (var p=0; p<this.pts.length; p = p + 3){
+          var x = this.pts[p];
+          var y = this.pts[p+1];
+          var z = this.pts[p+2];
+          
+          if(x > xMax) xMax = x;
+          if(x < xMin) xMin = x;
+          if(y > yMax) yMax = y;
+          if(y < yMin) yMin = y;
+          if(z > zMax) zMax = z;
+          if(z < zMin) zMin = z;
+      }
       
+      var xRange = xMax - xMin;
+      var yRange = yMax - yMin;
+      var zRange = zMax - zMin;
+      
+      if(xRange > yRange && xRange > zRange){
+          if(yRange > zRange){
+              var additional = yRange - zRange;
+              zMax = zMax + (additional / 2.0);
+              zMin = zMin - (additional / 2.0);
+              zRange = zRange + additional;
+              console.log('z smallest, x biggest');
+          }
+          else {
+              var additional = zRange - yRange;
+              yMax = yMax + (additional / 2.0);
+              yMin = yMin - (additional / 2.0);
+              yRange = yRange + additional;
+              console.log('y smallest, x biggest');
+          }
+      }
+      else if (yRange > xRange && yRange > zRange){
+          if(xRange > zRange){
+              var additional = xRange - zRange;
+              zMax = zMax + (additional / 2.0);
+              zMin = zMin - (additional / 2.0);
+              zRange = zRange + additional;
+              console.log('z smallest, y biggest');
+          }
+          else {
+              var additional = zRange - xRange;
+              xMax = xMax + (additional / 2.0);
+              xMin = xMin - (additional / 2.0);
+              xRange = xRange + additional;
+              console.log('x smallest, y biggest');
+          }
+      }
+      else{
+          if(xRange > yRange){
+              var additional = xRange - yRange;
+              yMax = yMax + (additional / 2.0);
+              yMin = yMin - (additional / 2.0);
+              yRange = yRange + additional;
+              console.log('y smallest, z biggest');
+          }
+          else {
+              var additional = yRange - xRange;
+              xMax = xMax + (additional / 2.0);
+              xMin = xMin - (additional / 2.0);
+              xRange = xRange + additional;
+              console.log('x smallest, z biggest');
+          }
+      }
+      
+      var steps = 4;
+      var xStep = xRange / steps;
+      var yStep = yRange / steps;
+      var zStep = zRange / steps;
+      
+      /*
       var step = .5;
       var range = max - min;
       console.log("Range: " + range);
@@ -202,6 +284,7 @@ ImpulseGraph.prototype.drawVisualization = function() {
           step = +step.toFixed(2);
       }
       console.log("Step: " + step);
+      */
 
 	  // specify options
 	  var options = {
@@ -214,16 +297,16 @@ ImpulseGraph.prototype.drawVisualization = function() {
 		keepAspectRatio: true,
 		verticalRatio: 0.5,
 		
-		xMax: max,
-		yMax: max, 
-		zMax: max, 
-		xMin: min, 
-		yMin: min, 
-		zMin: min,
+		xMax: xMax,
+		yMax: yMax, 
+		zMax: zMax, 
+		xMin: xMin, 
+		yMin: yMin, 
+		zMin: zMin,
         
-        xStep: step,
-        yStep: step, 
-        zStep: step,
+        xStep: Math.round(xStep*1000)/1000,
+        yStep: Math.round(yStep*1000)/1000, 
+        zStep: Math.round(zStep*1000)/1000,
 		
 		dataColor: {fill: '#0000FF', stroke: '#0000FF', strokeWidth: 1}
 	  };
