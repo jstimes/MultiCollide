@@ -1,4 +1,4 @@
 # MultiCollide
-C++/OpenGL interface for simulating n-body collisions
+https://jstimes.github.io/MultiCollide/
 
-Soon I'll update this repo with the actual MultiCollide project which is still under development. Currently it just contains some of my initial OpenGL experiments.
+Graphical interface developed in C++ for simulating collisions, ported to web via Emscripten.
